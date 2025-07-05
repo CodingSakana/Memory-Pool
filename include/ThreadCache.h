@@ -1,0 +1,39 @@
+#pragma once
+#include "Common.h"
+
+namespace MemoryPool
+{
+
+// 线程本地缓存
+class ThreadCache {
+public:
+    // 每个线程独立一份, 且只在首次访问时调用一次构造函数
+    static ThreadCache* getInstance() {
+        static thread_local ThreadCache instance;
+        return &instance;
+    }
+
+    void* allocate(size_t size);
+    void deallocate(void* ptr, size_t size);
+
+private:
+    ThreadCache() {
+        freeList_.fill(nullptr);
+        freeListSize_.fill(0);
+    }
+
+    // 从中心缓存获取内存
+    void* fetchFromCentralCache(size_t index);
+    // 归还内存到中心缓存
+    void returnToCentralCache(void* start, size_t size);
+    // 是否需要归还到中心缓存
+    bool shouldReturnToCentralCache(size_t index);
+
+private:
+    // 每个线程的自由链表数组
+    std::array<void*, FREE_LIST_SIZE> freeList_;
+    // 不同内存大小自由链表的大小统计
+    std::array<size_t, FREE_LIST_SIZE> freeListSize_;
+};
+
+} // namespace MemoryPool
