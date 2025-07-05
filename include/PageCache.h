@@ -3,7 +3,9 @@
 #include <map>
 #include <mutex>
 
-namespace MemoryPool
+// PageCache 管理页级内存（span），通过 mmap 向系统申请物理页，并合并相邻空闲 span，供给 CentralCache 使用。
+
+namespace mempool
 {
 class PageCache {
 public:
@@ -41,4 +43,4 @@ private:
     std::mutex mutex_;
 };
 
-} // namespace MemoryPool
+} // namespace mempool

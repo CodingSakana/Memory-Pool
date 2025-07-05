@@ -2,27 +2,27 @@
 #include <cstring>
 #include <sys/mman.h>
 
-namespace MemoryPool
+namespace mempool
 {
-// 好像是按照 span 里面的页数来决定分配的
+// 按照 span 里面的页数来决定分配
 void* PageCache::allocateSpan(size_t numPages) {
     // 普通互斥锁
     std::lock_guard<std::mutex> lock(mutex_);
 
-    // 查找合适的空闲span
-    // lower_bound() 返回第一个大于等于numPages的元素的迭代器
+    // 查找合适的空闲 span
+    // lower_bound() 返回第一个大于等于 numPages 的元素的迭代器
     auto it = freeSpans_.lower_bound(numPages);
     if (it != freeSpans_.end()) {
         Span* span = it->second;
 
-        // 将取出的span从原有的空闲链表freeSpans_[it->first]中移除
+        // 将取出的 span 从原有的空闲链表 freeSpans_[it->first] 中移除
         if (span->next) {
             freeSpans_[it->first] = span->next;
         } else {
             freeSpans_.erase(it);
         }
 
-        // 如果span大于需要的numPages则进行分割
+        // 如果 span 大于需要的 numPages 则进行分割
         if (span->numPages > numPages) {
             Span* newSpan = new Span; // newSpan 是超出部分
             newSpan->pageAddr = static_cast<char*>(span->pageAddr) + numPages * PAGE_SIZE;
@@ -60,7 +60,7 @@ void* PageCache::allocateSpan(size_t numPages) {
 void PageCache::deallocateSpan(void* ptr, size_t numPages) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    // 查找对应的span，没找到代表不是PageCache分配的内存，直接返回
+    // 查找对应的 span，没找到代表不是 PageCache 分配的内存，直接返回
     auto it = spanMap_.find(ptr);
     if (it == spanMap_.end()) return;
 
@@ -123,4 +123,4 @@ void* PageCache::systemAlloc(size_t numPages) {
     return ptr;
 }
 
-} // namespace MemoryPool
+} // namespace mempool

@@ -4,7 +4,7 @@
 #include <chrono>
 #include <thread>
 
-namespace MemoryPool
+namespace mempool
 {
 // 延时间隔
 const std::chrono::milliseconds CentralCache::DELAY_INTERVAL{1000};
@@ -12,6 +12,7 @@ const std::chrono::milliseconds CentralCache::DELAY_INTERVAL{1000};
 // 每次从 PageCache 获取 span 大小（以页为单位）
 static const size_t SPAN_PAGES = 8;
 
+// 初始化
 CentralCache::CentralCache() {
     for (auto& ptr : centralFreeList_) {
         ptr.store(nullptr, std::memory_order_relaxed);
@@ -46,7 +47,7 @@ void* CentralCache::fetchRange(size_t index) {
         if (!result) {
             // 如果中心缓存为空，从页缓存获取新的内存块
             size_t size = (index + 1) * ALIGNMENT; // 重新计算需要的大小等级
-            result = fetchFromPageCache(size);
+            result = fetchFromPageCache(size);     // 1个满足 size 的 span 的地址
 
             // 还是没有就返回 nullptr
             if (!result) {
@@ -58,9 +59,10 @@ void* CentralCache::fetchRange(size_t index) {
             char* start = static_cast<char*>(result);
 
             // 计算实际分配的页数
-            size_t numPages = (size <= SPAN_PAGES * PageCache::PAGE_SIZE)
-                                  ? SPAN_PAGES
-                                  : (size + PageCache::PAGE_SIZE - 1) / PageCache::PAGE_SIZE; // 向上取整
+            size_t numPages =
+                (size <= SPAN_PAGES * PageCache::PAGE_SIZE)
+                    ? SPAN_PAGES
+                    : (size + PageCache::PAGE_SIZE - 1) / PageCache::PAGE_SIZE; // 向上取整
             // 使用实际页数计算块数
             size_t blockNum = (numPages * PageCache::PAGE_SIZE) / size;
 
@@ -72,6 +74,7 @@ void* CentralCache::fetchRange(size_t index) {
                 }
                 *reinterpret_cast<void**>(start + (blockNum - 1) * size) = nullptr;
 
+                // 相当于取了一块？
                 // 保存result的下一个节点
                 void* next = *reinterpret_cast<void**>(result);
                 // 将result与链表断开
@@ -90,8 +93,7 @@ void* CentralCache::fetchRange(size_t index) {
                     spanTrackers_[trackerIndex].blockCount.store(
                         blockNum, std::memory_order_release); // 共分配了blockNum个内存块
                     spanTrackers_[trackerIndex].freeCount.store(blockNum - 1,
-                                                                std::memory_order_release); // 第一个块result已被分配出去，所以初始空闲块数为blockNum
-                                                                                            // - 1
+                                                                std::memory_order_release); // 第一个块result已被分配出去，所以初始空闲块数为blockNum - 1
                 }
             }
         } else {
@@ -181,6 +183,7 @@ void CentralCache::performDelayedReturn(size_t index) {
     std::unordered_map<SpanTracker*, size_t> spanFreeCounts;
     void* currentBlock = centralFreeList_[index].load(std::memory_order_relaxed);
 
+    // 遍历并写入 unordered_map
     while (currentBlock) {
         SpanTracker* tracker = getSpanTracker(currentBlock);
         if (tracker) {
@@ -237,7 +240,7 @@ void* CentralCache::fetchFromPageCache(size_t size) {
 
     // 2. 根据大小决定分配策略
     if (size <= SPAN_PAGES * PageCache::PAGE_SIZE) {
-        // 小于等于32KB的请求，使用固定8页
+        // 小于等于32KB的请求，使用固定8页 (4KB * 8)
         return PageCache::getInstance().allocateSpan(SPAN_PAGES);
     } else {
         // 大于32KB的请求，按实际需求分配
@@ -262,4 +265,4 @@ SpanTracker* CentralCache::getSpanTracker(void* blockAddr) {
     return nullptr;
 }
 
-} // namespace MemoryPool
+} // namespace mempool

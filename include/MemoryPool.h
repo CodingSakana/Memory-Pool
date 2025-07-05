@@ -1,7 +1,7 @@
 #pragma once
 #include "ThreadCache.h"
 
-namespace MemoryPool
+namespace mempool
 {
 
 class MemoryPool
@@ -18,4 +18,4 @@ public:
     }
 };
 
-} // namespace memoryPool
+} // namespace mempool

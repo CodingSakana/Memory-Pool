@@ -1,0 +1,22 @@
+[ 20%] Building CXX object CMakeFiles/perf_test.dir/src/CentralCache.cpp.o
+[ 40%] Building CXX object CMakeFiles/perf_test.dir/src/PageCache.cpp.o
+[ 60%] Building CXX object CMakeFiles/perf_test.dir/src/ThreadCache.cpp.o
+[ 80%] Linking CXX executable perf_test
+[100%] Built target perf_test
+Starting performance tests...
+Warming up memory systems...
+Warmup complete.
+
+
+Testing small allocations (50000 allocations of fixed sizes):
+Memory Pool: 36.000 ms
+New/Delete: 3.053 ms
+
+Testing multi-threaded allocations (4 threads, 25000 allocations each):
+Memory Pool: 13.898 ms
+New/Delete: 15.259 ms
+
+Testing mixed size allocations (100000 allocations with fixed sizes):
+Memory Pool: 5.105 ms
+New/Delete: 8.618 ms
+[100%] Built target perf

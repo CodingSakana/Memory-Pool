@@ -1,7 +1,9 @@
 #pragma once
 #include "Common.h"
 
-namespace MemoryPool
+// ThreadCache 是每个线程独立的内存池，按大小组织空闲块链表，从 CentralCache 批量获取小块内存。
+
+namespace mempool
 {
 
 // 线程本地缓存
@@ -36,4 +38,4 @@ private:
     std::array<size_t, FREE_LIST_SIZE> freeListSize_;
 };
 
-} // namespace MemoryPool
+} // namespace mempool

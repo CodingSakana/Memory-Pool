@@ -2,7 +2,7 @@
 #include "CentralCache.h"
 #include <cstdlib>
 
-namespace MemoryPool
+namespace mempool
 {
 
 void* ThreadCache::allocate(size_t size) {
@@ -122,4 +122,4 @@ void ThreadCache::returnToCentralCache(void* start, size_t size) {
     }
 }
 
-} // namespace MemoryPool
+} // namespace mempool

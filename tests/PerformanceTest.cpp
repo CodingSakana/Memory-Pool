@@ -1,4 +1,4 @@
-#include "../include/MemoryPool.h"
+#include "MemoryPool.h"
 #include <iostream>
 #include <vector>
 #include <chrono>
@@ -7,7 +7,7 @@
 #include <thread>
 #include <array>
 
-using namespace Kama_memoryPool;
+using namespace mempool;
 using namespace std::chrono;
 
 // 计时器类
