@@ -32,7 +32,8 @@ private:
     struct Span {
         void* pageAddr;  // 页起始地址
         size_t numPages; // 页数
-        Span* next;      // 链表指针
+        Span* next;      // 下一个
+        Span* prev;      // 前一个
     };
 
     // 使用 map 而不是 unordered_map 是为了使用 lower_bound()

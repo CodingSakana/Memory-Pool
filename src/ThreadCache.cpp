@@ -32,7 +32,8 @@ void ThreadCache::deallocate(void* ptr, size_t size) {
     size_t index = SizeClass::getIndex(size);
 
     // 插入到线程本地自由链表
-    *reinterpret_cast<void**>(ptr) = freeList_[index]; // ptr 被临时解释为 void** 类型, 下一句还是恢复为 void*
+    *reinterpret_cast<void**>(ptr) =
+        freeList_[index]; // ptr 被临时解释为 void** 类型, 下一句还是恢复为 void*
     freeList_[index] = ptr;
 
     // 更新对应自由链表的长度计数
@@ -45,6 +46,10 @@ void ThreadCache::deallocate(void* ptr, size_t size) {
 }
 
 void* ThreadCache::fetchFromCentralCache(size_t index) {
+    size_t size = (index + 1) * ALIGNMENT;
+    // 根据对象内存大小计算批量获取的数量
+    size_t batchNum = getBatchNum(size);
+    
     // 从中心缓存批量获取内存
     void* start = CentralCache::getInstance().fetchRange(index);
     if (!start) return nullptr;
@@ -120,6 +125,34 @@ void ThreadCache::returnToCentralCache(void* start, size_t size) {
             CentralCache::getInstance().returnRange(nextNode, returnNum * alignedSize, index);
         }
     }
+}
+
+size_t ThreadCache::getBatchNum(size_t size) {
+    // 基准：每次批量获取不超过4KB内存
+    constexpr size_t MAX_BATCH_SIZE = 4 * 1024; // 4KB
+
+    // 根据对象大小设置合理的基准批量数
+    size_t baseNum;
+    if (size <= 32)
+        baseNum = 64; // 64 * 32 = 2KB
+    else if (size <= 64)
+        baseNum = 32; // 32 * 64 = 2KB
+    else if (size <= 128)
+        baseNum = 16; // 16 * 128 = 2KB
+    else if (size <= 256)
+        baseNum = 8; // 8 * 256 = 2KB
+    else if (size <= 512)
+        baseNum = 4; // 4 * 512 = 2KB
+    else if (size <= 1024)
+        baseNum = 2; // 2 * 1024 = 2KB
+    else
+        baseNum = 1; // 大于1024的对象每次只从中心缓存取1个
+
+    // 计算最大批量数
+    size_t maxNum = std::max(size_t(1), MAX_BATCH_SIZE / size);
+
+    // 取最小值，但确保至少返回1
+    return std::max(sizeof(1), std::min(maxNum, baseNum));
 }
 
 } // namespace mempool

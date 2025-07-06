@@ -30,6 +30,8 @@ private:
     void returnToCentralCache(void* start, size_t size);
     // 是否需要归还到中心缓存
     bool shouldReturnToCentralCache(size_t index);
+    
+    size_t getBatchNum(size_t size);
 
 private:
     // 每个线程的自由链表数组
