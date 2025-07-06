@@ -9,12 +9,12 @@ class MemoryPool
 public:
     static void* allocate(size_t size)
     {
-        return ThreadCache::getInstance()->allocate(size);
+        return ThreadCache::getInstance().allocate(size);
     }
 
-    static void deallocate(void* ptr, size_t size)
+    static void deallocate(void* userPtr)
     {
-        ThreadCache::getInstance()->deallocate(ptr, size);
+        ThreadCache::getInstance().deallocate(userPtr);
     }
 };
 

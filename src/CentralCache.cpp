@@ -7,10 +7,10 @@
 namespace mempool
 {
 // 延时间隔
-const std::chrono::milliseconds CentralCache::DELAY_INTERVAL{1000};
+const std::chrono::milliseconds CentralCache::DELAY_INTERVAL{1000}; // 1000 ms
 
 // 每次从 PageCache 获取 span 大小（以页为单位）
-static const size_t SPAN_PAGES = 8;
+// static const size_t SPAN_PAGES = 8;
 
 // 初始化
 CentralCache::CentralCache() {

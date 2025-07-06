@@ -28,13 +28,12 @@ public:
     }
 
     // 给 ThreadCache 分配块
-    void* fetchRange(size_t index);
+    void* fetchToThreadCache(size_t index);
     // 回收内存
     void returnRange(void* start, size_t size, size_t index);
 
 private:
-    // ？
-    CentralCache();
+    CentralCache() = default;
 
     // 从页缓存获取内存
     void* fetchFromPageCache(size_t size);

@@ -4,65 +4,63 @@
 
 namespace mempool
 {
-// 按照 span 里面的页数来决定分配
-void* PageCache::allocateSpan(size_t numPages) {
+void* PageCache::allocateSpan(size_t memSize) {
+    size_t numPages = memSize / PAGE_SIZE;
     // 普通互斥锁
-    std::lock_guard<std::mutex> lock(mutex_);
+    // std::lock_guard<std::mutex> lock(mutex_);
 
     // 查找合适的空闲 span
     // lower_bound() 返回第一个大于等于 numPages 的元素的迭代器
     auto it = freeSpans_.lower_bound(numPages);
     if (it != freeSpans_.end()) {
-        Span* span = it->second;
+        Span* allocatedSpan = it->second;
 
         // 将取出的 span 从原有的空闲链表 freeSpans_[it->first] 中移除
-        if (span->next) {
-            freeSpans_[it->first] = span->next;
+        if (allocatedSpan->next) {
+            freeSpans_[it->first] = allocatedSpan->next;
         } else {
             freeSpans_.erase(it);
         }
 
-        // 如果 span 大于需要的 numPages 则进行分割
-        if (span->numPages > numPages) {
-            Span* newSpan = new Span; // newSpan 是超出部分
-            newSpan->pageAddr = static_cast<char*>(span->pageAddr) + numPages * PAGE_SIZE;
-            newSpan->numPages = span->numPages - numPages;
-            newSpan->next = nullptr;
+        // 如果 span 太大且分割后的部分任大于 8 页，则进行分割
+        if (allocatedSpan->numPages - numPages > 8) {
+            Span* SplitSpan =
+                new Span(static_cast<char*>(allocatedSpan->pageAddr) + memSize,
+                         allocatedSpan->numPages - numPages, 
+                         nullptr); // SplitSpan 是分割后超出的部分
 
             // 将超出部分放回空闲 Span* 列表头部
-            auto& list = freeSpans_[newSpan->numPages];
-            newSpan->next = list;
-            list = newSpan;
+            auto& list = freeSpans_[SplitSpan->numPages];
+            SplitSpan->next = list;
+            list = SplitSpan;
 
-            span->numPages = numPages;
+            allocatedSpan->numPages = numPages;
         }
 
         // 记录span信息用于回收
-        spanMap_[span->pageAddr] = span;
-        return span->pageAddr;
+        // spanMap_[allocatedSpan->pageAddr] = allocatedSpan;
+        return allocatedSpan->pageAddr;
     } else {
         // 没有合适的span，向系统申请
-        void* memory = systemAlloc(numPages);
+        void* memory = systemAlloc(memSize);
         if (!memory) return nullptr;
 
         // 创建新的span
-        Span* span = new Span;
-        span->pageAddr = memory;
-        span->numPages = numPages;
-        span->next = nullptr;
+        Span* span = new Span(memory, numPages, nullptr);
 
         // 记录span信息用于回收
-        spanMap_[memory] = span;
+        // spanMap_[memory] = span;
         return memory;
     }
 }
 
+// TODO
 void PageCache::deallocateSpan(void* ptr, size_t numPages) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    // std::lock_guard<std::mutex> lock(mutex_);
 
     // 查找对应的 span，没找到代表不是 PageCache 分配的内存，直接返回
-    auto it = spanMap_.find(ptr);
-    if (it == spanMap_.end()) return;
+    // auto it = spanMap_.find(ptr);
+    // if (it == spanMap_.end()) return;
 
     Span* span = it->second;
 
@@ -110,16 +108,14 @@ void PageCache::deallocateSpan(void* ptr, size_t numPages) {
     list = span;
 }
 
-void* PageCache::systemAlloc(size_t numPages) {
-    size_t size = numPages * PAGE_SIZE;
-
+void* PageCache::systemAlloc(size_t memSize) {
     // 使用mmap分配内存
     // MAP_PRIVATE | MAP_ANONYMOUS 的意思是 写时复制(不是直写) | 匿名(不是文件)
-    void* ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    void* ptr = mmap(nullptr, memSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (ptr == MAP_FAILED) return nullptr;
 
     // 清零内存
-    memset(ptr, 0, size);
+    memset(ptr, 0, memSize);
     return ptr;
 }
 
