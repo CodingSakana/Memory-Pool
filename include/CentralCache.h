@@ -28,9 +28,9 @@ public:
     }
 
     // 给 ThreadCache 分配块
-    void* fetchToThreadCache(size_t index);
+    void* fetchToThreadCache(size_t index, size_t batchNum);
     // 回收内存
-    void returnRange(void* start, size_t size, size_t index);
+    void returnFromThreadCache(void* start, size_t size, size_t index);
 
 private:
     CentralCache() = default;
@@ -46,10 +46,14 @@ private:
 
 private:
     // 中心缓存的自由链表
-    std::array<std::atomic<void*>, FREE_LIST_SIZE> centralFreeList_;
+    std::array<std::atomic<void*>, kFreeListSize> centralFreeList_;
+    // 不同内存大小自由链表的大小统计
+    std::array<size_t, kFreeListSize> centralFreeListSize_;
 
     // 用于同步的自旋锁
-    std::array<std::atomic_flag, FREE_LIST_SIZE> locks_;
+    std::array<SpinLock, kFreeListSize> locks_;
+
+    /*======= TODO ======*/
 
     // 使用数组存储 span 信息，避免 map 的开销
     std::array<SpanTracker, 1024> spanTrackers_;
@@ -57,8 +61,8 @@ private:
 
     // 延迟归还相关的成员变量
     static const size_t MAX_DELAY_COUNT = 48;                                           // 最大延迟计数
-    std::array<std::atomic<size_t>, FREE_LIST_SIZE> delayCounts_;                       // 每个大小类的延迟计数
-    std::array<std::chrono::steady_clock::time_point, FREE_LIST_SIZE> lastReturnTimes_; // 每个大小类的上次归还时间
+    std::array<std::atomic<size_t>, kFreeListSize> delayCounts_;                       // 每个大小类的延迟计数
+    std::array<std::chrono::steady_clock::time_point, kFreeListSize> lastReturnTimes_; // 每个大小类的上次归还时间
     static const std::chrono::milliseconds DELAY_INTERVAL;                              // 延迟间隔
 
     bool shouldPerformDelayedReturn(size_t index, size_t currentCount,

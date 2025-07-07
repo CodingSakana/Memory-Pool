@@ -18,7 +18,7 @@ public:
     }
 
     // 分配指定页数的 Span 给 CentralCache，返回的是 Span 的地址
-    void* allocateSpan(size_t memSize);
+    void* allocateSpanToCentral(size_t requiredMemSize);
 
     // 释放span todo
     void deallocateSpan(void* ptr, size_t numPages);
@@ -39,22 +39,31 @@ private:
     void* systemAlloc(size_t numPages);
 
 private:
+    struct Span;
+
+    struct CompeleteSpan {
+        std::map<void*, Span*> spanMap_;
+    };
+
     struct Span {
         void* pageAddr;  // 起始地址
         size_t numPages; // 页数
         Span* next;      // 后一个 Span
+        size_t compSpanIndex;
+        bool isUsed;
 
-        Span() : pageAddr(nullptr), numPages(0), next(nullptr) {};
-        Span(void* pageAddr_, size_t numPages_, Span* next_ = nullptr)
-            : pageAddr(pageAddr_), numPages(numPages_), next(next_) {};
+        Span() : pageAddr(nullptr), numPages(0), next(nullptr), compSpanIndex(0), isUsed(false) {};
+        Span(void* pageAddr_, size_t numPages_, Span* next_, size_t compSpanIndex_, bool isUsed_)
+            : pageAddr(pageAddr_), numPages(numPages_), next(next_), compSpanIndex(compSpanIndex_), isUsed(isUsed_) {};
     };
 
     // 使用 map 而不是 unordered_map 是为了使用 lower_bound()
     // 按页数管理空闲span，不同页数对应不同Span链表
     std::map<size_t, Span*> freeSpans_;
 
-    // 页号到span的映射，用于回收
-    // std::map<void*, Span*> spanMap_;
+    // 地址到span的映射，用于回收
+    std::map<void*, Span*> spanMap_;
+    std::array<CompeleteSpan, kMaxMemPoolSize / kMaxBytes> completeSpanList_;
 
     // std::mutex mutex_;
 };

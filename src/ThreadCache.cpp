@@ -18,13 +18,13 @@ void* ThreadCache::allocate(size_t memSize) {
     size_t index = SizeClass::getIndex(memSize); // 获取所需的内存组编号 memSize <= index * 8B
 
     // 如果线程本地自由链表为空，则从中心缓存获取一批内存
-    if (freeListSize_[index] == 0 || freeList_[index] == nullptr) fetchFromCentralCache(index);
+    if (threadFreeListSize_[index] == 0 || threadFreeList_[index] == nullptr) fetchFromCentralCache(index);
     // 更新对应自由链表的长度计数
-    freeListSize_[index]--;
+    threadFreeListSize_[index]--;
 
-    void* block = freeList_[index];
-    // 更新 freeList_[index] 指向下一指针地址,
-    freeList_[index] = *reinterpret_cast<void**>(block);
+    void* block = threadFreeList_[index];
+    // 更新 threadFreeList_[index] 指向下一指针地址,
+    threadFreeList_[index] = *reinterpret_cast<void**>(block);
     return static_cast<char*>(block) + sizeof(BlockHeader);
 }
 
@@ -41,15 +41,15 @@ void ThreadCache::deallocate(void* userPtr) {
     size_t index = header->index;
 
     // 插入到线程本地自由链表
-    *reinterpret_cast<void**>(realPtr) = freeList_[index]; // ptr 被临时解释为 void** 类型, 下一句还是恢复为 void*
-    freeList_[index] = realPtr;
+    *reinterpret_cast<void**>(realPtr) = threadFreeList_[index]; // ptr 被临时解释为 void** 类型, 下一句还是恢复为 void*
+    threadFreeList_[index] = realPtr;
 
     // 更新对应自由链表的长度计数
-    freeListSize_[index]++;
+    threadFreeListSize_[index]++;
 
     // 判断是否需要将部分内存回收给中心缓存
     if (shouldReturnToCentralCache(index)) {
-        returnToCentralCache(freeList_[index], index);
+        returnToCentralCache(threadFreeList_[index], index);
     }
 }
 
@@ -62,24 +62,23 @@ void ThreadCache::fetchFromCentralCache(size_t index) {
     if (!start) return;
 
     // 更新自由链表大小
-    freeListSize_[index] += batchNum;
-    freeList_[index] = start;
+    threadFreeListSize_[index] += batchNum;
+    threadFreeList_[index] = start;
 
     return;
 }
 
 // 判断是否需要将内存回收给中心缓存
 bool ThreadCache::shouldReturnToCentralCache(size_t index) {
-    return freeListSize_[index] >= kReturnToCentralThreshold;
+    return threadFreeListSize_[index] >= kReturnToCentralThreshold;
 }
 
 void ThreadCache::returnToCentralCache(void* start, size_t index) {
-
-    // 获取对齐后的实际块大小
-    size_t alignedSize = SizeClass::roundUp(size);
+    // // 获取对齐后的实际块大小
+    // size_t alignedSize = SizeClass::roundUp(size);
 
     // 计算要归还内存块数量
-    size_t batchNum = freeListSize_[index];
+    size_t batchNum = threadFreeListSize_[index];
     if (batchNum <= 1) return; // 如果只有一个块，则不归还
 
     // 保留一部分在ThreadCache中（比如保留1/4）
@@ -105,14 +104,14 @@ void ThreadCache::returnToCentralCache(void* start, size_t index) {
         *reinterpret_cast<void**>(splitNode) = nullptr; // 断开连接
 
         // 更新ThreadCache的空闲链表
-        freeList_[index] = start;
+        threadFreeList_[index] = start;
 
         // 更新自由链表大小
-        freeListSize_[index] = keepNum;
+        threadFreeListSize_[index] = keepNum;
 
         // 将剩余部分返回给CentralCache
         if (returnNum > 0 && nextNode != nullptr) {
-            CentralCache::getInstance().returnRange(nextNode, returnNum * alignedSize, index);
+            CentralCache::getInstance().returnFromThreadCache(nextNode, returnNum * kAlignment, index);
         }
     }
 }

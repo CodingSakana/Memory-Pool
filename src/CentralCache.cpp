@@ -18,8 +18,9 @@ CentralCache::CentralCache() {
         ptr.store(nullptr, std::memory_order_relaxed);
     }
     for (auto& lock : locks_) {
-        lock.clear();
+        lock.unlock();
     }
+
     // 初始化延迟归还相关的成员变量
     for (auto& count : delayCounts_) {
         count.store(0, std::memory_order_relaxed);
@@ -30,28 +31,27 @@ CentralCache::CentralCache() {
     spanCount_.store(0, std::memory_order_relaxed);
 }
 
-void* CentralCache::fetchRange(size_t index) {
-    // 索引检查，当索引大于等于FREE_LIST_SIZE时，说明申请内存过大应直接向系统申请
-    if (index >= FREE_LIST_SIZE) return nullptr;
+void* CentralCache::fetchToThreadCache(size_t index, size_t batchNum) {
+    // // 索引检查，当索引大于等于kFreeListSize时，说明申请内存过大应直接向系统申请
+    // if (index >= kFreeListSize) return nullptr;
 
     // 自旋锁保护
-    while (locks_[index].test_and_set(std::memory_order_acquire)) {
-        std::this_thread::yield(); // 添加线程让步，避免忙等待，避免过度消耗CPU
-    }
+    locks_[index].lock();
 
     void* result = nullptr;
     try {
         // 尝试从中心缓存获取内存块
         result = centralFreeList_[index].load(std::memory_order_relaxed);
 
-        if (!result) {
-            // 如果中心缓存为空，从页缓存获取新的内存块
-            size_t size = (index + 1) * ALIGNMENT; // 重新计算需要的大小等级
-            result = fetchFromPageCache(size);     // 1个满足 size 的 span 的地址
+        // central 不够时
+        if (batchNum > centralFreeListSize_[index]) {
+            // 计算需要从 pagecache 拿来的 totaltotalMemSize (包括 BlockHeader)
+            size_t totaltotalMemSize = (batchNum - centralFreeListSize_[index]) * ((index + 1) * kAlignment + sizeof(BlockHeader));
+            result = fetchFromPageCache(totaltotalMemSize);     // 1个满足 size 的 span 的地址
 
             // 还是没有就返回 nullptr
             if (!result) {
-                locks_[index].clear(std::memory_order_release);
+                locks_[index].unlock();
                 return nullptr;
             }
 
@@ -60,11 +60,11 @@ void* CentralCache::fetchRange(size_t index) {
 
             // 计算实际分配的页数
             size_t numPages =
-                (size <= SPAN_PAGES * PageCache::PAGE_SIZE)
+                (size <= SPAN_PAGES * kPageSize)
                     ? SPAN_PAGES
-                    : (size + PageCache::PAGE_SIZE - 1) / PageCache::PAGE_SIZE; // 向上取整
+                    : (size + kPageSize - 1) / kPageSize; // 向上取整
             // 使用实际页数计算块数
-            size_t blockNum = (numPages * PageCache::PAGE_SIZE) / size;
+            size_t blockNum = (numPages * kPageSize) / size;
 
             if (blockNum > 1) { // 确保至少有两个块才构建链表
                 for (size_t i = 1; i < blockNum; ++i) {
@@ -123,9 +123,9 @@ void* CentralCache::fetchRange(size_t index) {
 }
 
 void CentralCache::returnRange(void* start, size_t size, size_t index) {
-    if (!start || index >= FREE_LIST_SIZE) return;
+    if (!start || index >= kFreeListSize) return;
 
-    size_t blockSize = (index + 1) * ALIGNMENT;
+    size_t blockSize = (index + 1) * kAlignment;
     size_t blockCount = size / blockSize;
 
     while (locks_[index].test_and_set(std::memory_order_acquire)) {
@@ -217,7 +217,7 @@ void CentralCache::updateSpanFreeCount(SpanTracker* tracker, size_t newFreeBlock
         while (current) {
             void* next = *reinterpret_cast<void**>(current);
             if (current >= spanAddr &&
-                current < static_cast<char*>(spanAddr) + numPages * PageCache::PAGE_SIZE) {
+                current < static_cast<char*>(spanAddr) + numPages * kPageSize) {
                 if (prev) {
                     *reinterpret_cast<void**>(prev) = next;
                 } else {
@@ -234,17 +234,17 @@ void CentralCache::updateSpanFreeCount(SpanTracker* tracker, size_t newFreeBlock
     }
 }
 
-void* CentralCache::fetchFromPageCache(size_t size) {
+void* CentralCache::fetchFromPageCache(size_t totalMemSize) {
     // 1. 计算实际需要的页数
-    size_t numPages = (size + PageCache::PAGE_SIZE - 1) / PageCache::PAGE_SIZE;
+    size_t numPages = (totalMemSize + kPageSize - 1) / kPageSize;
 
     // 2. 根据大小决定分配策略
-    if (size <= SPAN_PAGES * PageCache::PAGE_SIZE) {
+    if (numPages <= 8) {
         // 小于等于32KB的请求，使用固定8页 (4KB * 8)
-        return PageCache::getInstance().allocateSpan(SPAN_PAGES);
+        return PageCache::getInstance().allocateSpanToCentral(numPages * kPageSize);
     } else {
         // 大于32KB的请求，按实际需求分配
-        return PageCache::getInstance().allocateSpan(numPages);
+        return PageCache::getInstance().allocateSpanToCentral(numPages * kPageSize);
     }
 }
 
@@ -258,7 +258,7 @@ SpanTracker* CentralCache::getSpanTracker(void* blockAddr) {
         // static_cast<char*>(spanAddr) 是为了需要做加法，得先确定指针类型，
         // char* 即以 1B 为单位
         if (blockAddr >= spanAddr &&
-            blockAddr < static_cast<char*>(spanAddr) + numPages * PageCache::PAGE_SIZE) {
+            blockAddr < static_cast<char*>(spanAddr) + numPages * kPageSize) {
             return &spanTrackers_[i];
         }
     }

@@ -15,14 +15,14 @@ public:
         return instance;
     }
     // 分配内存
-    void* allocate(size_t size);
+    void* allocate(size_t memSize);
     // 归还内存
     void deallocate(void* userPtr);
 
 private:
     ThreadCache() {
-        freeList_.fill(nullptr);
-        freeListSize_.fill(0);
+        threadFreeList_.fill(nullptr);
+        threadFreeListSize_.fill(0);
     }
 
     // 从中心缓存获取内存
@@ -31,14 +31,14 @@ private:
     void returnToCentralCache(void* start, size_t size);
     // 是否需要归还到中心缓存
     bool shouldReturnToCentralCache(size_t index);
-    
+    // 获取批量获得的块数目
     size_t getBatchNum(size_t size);
 
 private:
     // 每个线程的自由链表数组
-    std::array<void*, kFreeListSize> freeList_;
+    std::array<void*, kFreeListSize> threadFreeList_;
     // 不同内存大小自由链表的大小统计
-    std::array<size_t, kFreeListSize> freeListSize_;
+    std::array<size_t, kFreeListSize> threadFreeListSize_;
 };
 
 } // namespace mempool
