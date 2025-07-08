@@ -113,68 +113,42 @@ preinstall/fast:
 
 # clear depends
 depend:
+	$(CMAKE_COMMAND) -P /home/sssakana/CodingFiles/Memory-Pool/build/CMakeFiles/VerifyGlobs.cmake
 	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named unit_test
+# Target rules for targets named mempool
 
 # Build rule for target.
-unit_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test
-.PHONY : unit_test
+mempool: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 mempool
+.PHONY : mempool
 
 # fast build rule for target.
-unit_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test.dir/build.make CMakeFiles/unit_test.dir/build
-.PHONY : unit_test/fast
+mempool/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mempool.dir/build.make CMakeFiles/mempool.dir/build
+.PHONY : mempool/fast
 
 #=============================================================================
-# Target rules for targets named perf_test
+# Target rules for targets named demotest
 
 # Build rule for target.
-perf_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 perf_test
-.PHONY : perf_test
+demotest: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 demotest
+.PHONY : demotest
 
 # fast build rule for target.
-perf_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf_test.dir/build.make CMakeFiles/perf_test.dir/build
-.PHONY : perf_test/fast
-
-#=============================================================================
-# Target rules for targets named test
-
-# Build rule for target.
-test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test
-.PHONY : test
-
-# fast build rule for target.
-test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test.dir/build.make CMakeFiles/test.dir/build
-.PHONY : test/fast
-
-#=============================================================================
-# Target rules for targets named perf
-
-# Build rule for target.
-perf: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 perf
-.PHONY : perf
-
-# fast build rule for target.
-perf/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf.dir/build.make CMakeFiles/perf.dir/build
-.PHONY : perf/fast
+demotest/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/demotest.dir/build.make CMakeFiles/demotest.dir/build
+.PHONY : demotest/fast
 
 src/CentralCache.o: src/CentralCache.cpp.o
 .PHONY : src/CentralCache.o
 
 # target to build an object file
 src/CentralCache.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test.dir/build.make CMakeFiles/unit_test.dir/src/CentralCache.cpp.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf_test.dir/build.make CMakeFiles/perf_test.dir/src/CentralCache.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mempool.dir/build.make CMakeFiles/mempool.dir/src/CentralCache.cpp.o
 .PHONY : src/CentralCache.cpp.o
 
 src/CentralCache.i: src/CentralCache.cpp.i
@@ -182,8 +156,7 @@ src/CentralCache.i: src/CentralCache.cpp.i
 
 # target to preprocess a source file
 src/CentralCache.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test.dir/build.make CMakeFiles/unit_test.dir/src/CentralCache.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf_test.dir/build.make CMakeFiles/perf_test.dir/src/CentralCache.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mempool.dir/build.make CMakeFiles/mempool.dir/src/CentralCache.cpp.i
 .PHONY : src/CentralCache.cpp.i
 
 src/CentralCache.s: src/CentralCache.cpp.s
@@ -191,8 +164,7 @@ src/CentralCache.s: src/CentralCache.cpp.s
 
 # target to generate assembly for a file
 src/CentralCache.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test.dir/build.make CMakeFiles/unit_test.dir/src/CentralCache.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf_test.dir/build.make CMakeFiles/perf_test.dir/src/CentralCache.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mempool.dir/build.make CMakeFiles/mempool.dir/src/CentralCache.cpp.s
 .PHONY : src/CentralCache.cpp.s
 
 src/PageCache.o: src/PageCache.cpp.o
@@ -200,8 +172,7 @@ src/PageCache.o: src/PageCache.cpp.o
 
 # target to build an object file
 src/PageCache.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test.dir/build.make CMakeFiles/unit_test.dir/src/PageCache.cpp.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf_test.dir/build.make CMakeFiles/perf_test.dir/src/PageCache.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mempool.dir/build.make CMakeFiles/mempool.dir/src/PageCache.cpp.o
 .PHONY : src/PageCache.cpp.o
 
 src/PageCache.i: src/PageCache.cpp.i
@@ -209,8 +180,7 @@ src/PageCache.i: src/PageCache.cpp.i
 
 # target to preprocess a source file
 src/PageCache.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test.dir/build.make CMakeFiles/unit_test.dir/src/PageCache.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf_test.dir/build.make CMakeFiles/perf_test.dir/src/PageCache.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mempool.dir/build.make CMakeFiles/mempool.dir/src/PageCache.cpp.i
 .PHONY : src/PageCache.cpp.i
 
 src/PageCache.s: src/PageCache.cpp.s
@@ -218,8 +188,7 @@ src/PageCache.s: src/PageCache.cpp.s
 
 # target to generate assembly for a file
 src/PageCache.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test.dir/build.make CMakeFiles/unit_test.dir/src/PageCache.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf_test.dir/build.make CMakeFiles/perf_test.dir/src/PageCache.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mempool.dir/build.make CMakeFiles/mempool.dir/src/PageCache.cpp.s
 .PHONY : src/PageCache.cpp.s
 
 src/ThreadCache.o: src/ThreadCache.cpp.o
@@ -227,8 +196,7 @@ src/ThreadCache.o: src/ThreadCache.cpp.o
 
 # target to build an object file
 src/ThreadCache.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test.dir/build.make CMakeFiles/unit_test.dir/src/ThreadCache.cpp.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf_test.dir/build.make CMakeFiles/perf_test.dir/src/ThreadCache.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mempool.dir/build.make CMakeFiles/mempool.dir/src/ThreadCache.cpp.o
 .PHONY : src/ThreadCache.cpp.o
 
 src/ThreadCache.i: src/ThreadCache.cpp.i
@@ -236,8 +204,7 @@ src/ThreadCache.i: src/ThreadCache.cpp.i
 
 # target to preprocess a source file
 src/ThreadCache.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test.dir/build.make CMakeFiles/unit_test.dir/src/ThreadCache.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf_test.dir/build.make CMakeFiles/perf_test.dir/src/ThreadCache.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mempool.dir/build.make CMakeFiles/mempool.dir/src/ThreadCache.cpp.i
 .PHONY : src/ThreadCache.cpp.i
 
 src/ThreadCache.s: src/ThreadCache.cpp.s
@@ -245,57 +212,32 @@ src/ThreadCache.s: src/ThreadCache.cpp.s
 
 # target to generate assembly for a file
 src/ThreadCache.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test.dir/build.make CMakeFiles/unit_test.dir/src/ThreadCache.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf_test.dir/build.make CMakeFiles/perf_test.dir/src/ThreadCache.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mempool.dir/build.make CMakeFiles/mempool.dir/src/ThreadCache.cpp.s
 .PHONY : src/ThreadCache.cpp.s
 
-tests/PerformanceTest.o: tests/PerformanceTest.cpp.o
-.PHONY : tests/PerformanceTest.o
+tests/demotest.o: tests/demotest.cpp.o
+.PHONY : tests/demotest.o
 
 # target to build an object file
-tests/PerformanceTest.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf_test.dir/build.make CMakeFiles/perf_test.dir/tests/PerformanceTest.cpp.o
-.PHONY : tests/PerformanceTest.cpp.o
+tests/demotest.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/demotest.dir/build.make CMakeFiles/demotest.dir/tests/demotest.cpp.o
+.PHONY : tests/demotest.cpp.o
 
-tests/PerformanceTest.i: tests/PerformanceTest.cpp.i
-.PHONY : tests/PerformanceTest.i
-
-# target to preprocess a source file
-tests/PerformanceTest.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf_test.dir/build.make CMakeFiles/perf_test.dir/tests/PerformanceTest.cpp.i
-.PHONY : tests/PerformanceTest.cpp.i
-
-tests/PerformanceTest.s: tests/PerformanceTest.cpp.s
-.PHONY : tests/PerformanceTest.s
-
-# target to generate assembly for a file
-tests/PerformanceTest.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/perf_test.dir/build.make CMakeFiles/perf_test.dir/tests/PerformanceTest.cpp.s
-.PHONY : tests/PerformanceTest.cpp.s
-
-tests/UnitTest.o: tests/UnitTest.cpp.o
-.PHONY : tests/UnitTest.o
-
-# target to build an object file
-tests/UnitTest.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test.dir/build.make CMakeFiles/unit_test.dir/tests/UnitTest.cpp.o
-.PHONY : tests/UnitTest.cpp.o
-
-tests/UnitTest.i: tests/UnitTest.cpp.i
-.PHONY : tests/UnitTest.i
+tests/demotest.i: tests/demotest.cpp.i
+.PHONY : tests/demotest.i
 
 # target to preprocess a source file
-tests/UnitTest.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test.dir/build.make CMakeFiles/unit_test.dir/tests/UnitTest.cpp.i
-.PHONY : tests/UnitTest.cpp.i
+tests/demotest.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/demotest.dir/build.make CMakeFiles/demotest.dir/tests/demotest.cpp.i
+.PHONY : tests/demotest.cpp.i
 
-tests/UnitTest.s: tests/UnitTest.cpp.s
-.PHONY : tests/UnitTest.s
+tests/demotest.s: tests/demotest.cpp.s
+.PHONY : tests/demotest.s
 
 # target to generate assembly for a file
-tests/UnitTest.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test.dir/build.make CMakeFiles/unit_test.dir/tests/UnitTest.cpp.s
-.PHONY : tests/UnitTest.cpp.s
+tests/demotest.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/demotest.dir/build.make CMakeFiles/demotest.dir/tests/demotest.cpp.s
+.PHONY : tests/demotest.cpp.s
 
 # Help Target
 help:
@@ -305,10 +247,8 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... perf"
-	@echo "... test"
-	@echo "... perf_test"
-	@echo "... unit_test"
+	@echo "... demotest"
+	@echo "... mempool"
 	@echo "... src/CentralCache.o"
 	@echo "... src/CentralCache.i"
 	@echo "... src/CentralCache.s"
@@ -318,12 +258,9 @@ help:
 	@echo "... src/ThreadCache.o"
 	@echo "... src/ThreadCache.i"
 	@echo "... src/ThreadCache.s"
-	@echo "... tests/PerformanceTest.o"
-	@echo "... tests/PerformanceTest.i"
-	@echo "... tests/PerformanceTest.s"
-	@echo "... tests/UnitTest.o"
-	@echo "... tests/UnitTest.i"
-	@echo "... tests/UnitTest.s"
+	@echo "... tests/demotest.o"
+	@echo "... tests/demotest.i"
+	@echo "... tests/demotest.s"
 .PHONY : help
 
 
@@ -335,6 +272,7 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
+	$(CMAKE_COMMAND) -P /home/sssakana/CodingFiles/Memory-Pool/build/CMakeFiles/VerifyGlobs.cmake
 	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

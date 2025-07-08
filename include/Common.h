@@ -2,6 +2,7 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <thread>
 
 namespace mempool
 {
@@ -13,6 +14,7 @@ constexpr size_t kReturnToCentralThreshold = 256;        // 归还至 Central �
 constexpr uint32_t kLargeAllocIndex = 0xFFFFFFFF;        // 标记大块分配
 constexpr size_t kMaxPages = kMaxBytes / kMaxBytes;      // Span 可以包含的最大页数
 constexpr size_t kMaxMemPoolSize = kMaxBytes * 1024;     // 内存池最大支持容量 256MB
+constexpr size_t kMinSpanPages = 8;                      // Span 的最小页数
 
 struct BlockHeader {
     uint32_t index; // size class 编号(0 ~ 32767)   // 可以最大表示到 (32K - 1)B
@@ -44,6 +46,6 @@ public:
     void unlock() { flag.clear(std::memory_order_release); }
 };
 
-std::array<SpinLock, kFreeListSize> locks_;
+inline std::array<SpinLock, kFreeListSize> locks_;
 
 } // namespace mempool

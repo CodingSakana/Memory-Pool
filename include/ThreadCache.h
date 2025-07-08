@@ -20,6 +20,7 @@ public:
     void deallocate(void* userPtr);
 
 private:
+    // 初始化
     ThreadCache() {
         threadFreeList_.fill(nullptr);
         threadFreeListSize_.fill(0);
@@ -28,7 +29,7 @@ private:
     // 从中心缓存获取内存
     void fetchFromCentralCache(size_t index);
     // 归还内存到中心缓存
-    void returnToCentralCache(void* start, size_t size);
+    void returnToCentralCache(void* start);
     // 是否需要归还到中心缓存
     bool shouldReturnToCentralCache(size_t index);
     // 获取批量获得的块数目
