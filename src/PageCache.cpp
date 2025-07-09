@@ -191,30 +191,42 @@ void PageCache::mergeWithNeighbors(Span*& span) {
 
 /* 若空闲页总量过大，则把最大的 span 直接释放给系统 */
 void PageCache::releaseIfExcess() {
+    // 只要逻辑空闲页超标，就尝试回收
     while (totalFreePages_ > kReleaseThresholdPages && !freeSpans_.empty()) {
-        auto itBiggest = std::prev(freeSpans_.end());
-        Span* span = itBiggest->second;
+        // 从最大 span 开始往前找
+        auto it = freeSpans_.end();
+        bool didFree = false;
 
-        // 只有当 span->pageAddr 正好是系统基址才真正释放
-        if (systemBases_.count(span->pageAddr)) {
+        // 向前迭代：注意 it 最初是 end()，要 --it
+        while (it != freeSpans_.begin()) {
+            --it;  // it 现在指向 freeSpans_ 中最大的一个元素
+            Span* span = it->second;
             void* base = span->pageAddr;
-            std::size_t pages = span->numPages;
+            if (systemBases_.count(base)) {
+                // 找到真正的系统基址，执行释放
+                std::size_t pages = span->numPages;
+                eraseSpan(span);             // 从 freeSpans_/addrSpanMap_ 中删
+                systemBases_.erase(base);    // 从基址集合中删
 
-            eraseSpan(span); // 从两张 map（size-map 和 addr-map）删除并 delete span （只删 meta）
-            systemBases_.erase(base); // 物理回收整个 Span
+    #if __cpp_aligned_new >= 201606
+                ::operator delete(base, std::align_val_t{kPageSize});
+    #else
+                std::free(base);
+    #endif
+                totalFreePages_ -= pages;
+                didFree = true;
+                break;  // 本次循环结束，重新从尾部开始新一轮回收
+            }
+            // 否则跳过这个 span，继续往前找
+        }
 
-#if __cpp_aligned_new >= 201606
-            ::operator delete(base, std::align_val_t{kPageSize});
-#else
-            std::free(base);
-#endif
-            totalFreePages_ -= pages;
-        } else {
-            // 不是基址：跳过，避免浪费
-            // 可选择继续找下一个较大 span
+        if (!didFree) {
+            // 在整个 freeSpans_ 里都没有找到可释放的基址，退出
             break;
         }
+        // 如果 didFree == true，外层 while 会根据新 totalFreePages_ 决定是否继续
     }
 }
+
 
 } // namespace mempool

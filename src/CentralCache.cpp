@@ -79,10 +79,18 @@ void CentralCache::returnBatch(BlockHeader* start, std::size_t /*blockNum*/,
     lk.unlock();
 }
 
-/* 向 PageCache 申请 8 页，切分成 BlockHeader 链并挂入 centralFreeList_[index] */
+// 按 size‐class 分段：小对象拿少点页，大对象拿多点页
+static constexpr std::size_t kSpanPagesForIndex(size_t index) {
+    if (index <= 4) return 4;    // 最小 sizeClass，用 4 页
+    if (index <= 16) return 8;   // 中小型，用 8 页
+    if (index <= 64) return 16;  // 中型，用 16 页
+    return 32;                    // 较大，用 32 页
+}
+
+/* 向 PageCache 申请，切分成 BlockHeader 链并挂入 centralFreeList_[index] */
 void CentralCache::refillFromPageCache(std::size_t index) {
-    constexpr std::size_t kSpanPages = 8; // 每次申请 8 页
-    constexpr std::size_t spanBytes = kSpanPages * kPageSize;
+    size_t spanPages = kSpanPagesForIndex(index);
+    size_t spanBytes = spanPages * kPageSize;
 
     std::size_t userBytes = (index + 1) * kAlignment;
     std::size_t blkBytes = userBytes + sizeof(BlockHeader); // 块总大小
@@ -90,7 +98,7 @@ void CentralCache::refillFromPageCache(std::size_t index) {
     if (blkBytes > spanBytes) return;
 
     /* 向 PageCache 申请整页内存 */
-    void* spanMem = PageCache::getInstance().allocateSpan(kSpanPages); // 接口以页数为单位
+    void* spanMem = PageCache::getInstance().allocateSpan(spanPages); // 接口以页数为单位
     if (!spanMem) return;                                              // 失败则放弃
 
     /* 切分成链表，逆序插入头部 */

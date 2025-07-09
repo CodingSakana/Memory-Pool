@@ -26,7 +26,6 @@ struct SpinLock {
     std::atomic_flag flag = ATOMIC_FLAG_INIT;
 
     void lock() noexcept {
-        unsigned spins = 0;
         while (flag.test_and_set(std::memory_order_acquire)) {
 #ifdef __x86_64__
             /**
