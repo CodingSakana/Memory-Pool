@@ -1,144 +1,128 @@
 #include "ThreadCache.h"
-#include "CentralCache.h"
-#include <algorithm>
-#include <cstdlib>
+
+#include <cassert>
+#include <cstdlib> // malloc / free
+#include <new>     // std::bad_alloc
 
 namespace mempool
 {
-// 分配 块 内存
-void* ThreadCache::allocate(size_t memSize) {
-    if (memSize == 0) memSize = kAlignment; // 至少分配一个 kAlignment
-    if (memSize > kMaxBytes) {
-        size_t totalSize = memSize + sizeof(BlockHeader);
-        char* realPtr = (char*)malloc(totalSize); // 分配 header + data
-        BlockHeader* header = (BlockHeader*)realPtr;
-        header->index = kLargeAllocIndex;
-        return realPtr + sizeof(BlockHeader);
-    }
-
-    size_t index = SizeClass::getIndex(memSize); // 获取所需的内存组编号 memSize <= index * 8B
-
-    // 如果线程本地自由链表为空，则从中心缓存获取一批内存
-    while (threadFreeListSize_[index] == 0 || threadFreeList_[index] == nullptr)
-        fetchFromCentralCache(index);
-    // 更新对应自由链表的长度计数
-    threadFreeListSize_[index]--;
-
-    void* block = threadFreeList_[index];
-    // 更新 threadFreeList_[index] 指向下一指针地址,
-    threadFreeList_[index] = *reinterpret_cast<void**>(block);
-    return static_cast<char*>(block);
+/* 单例：每个线程一个实例 */
+ThreadCache& ThreadCache::getInstance() {
+    thread_local ThreadCache tc;
+    return tc;
 }
 
-// 归还 块 内存
-void ThreadCache::deallocate(void* userPtr) {
-    char* realPtr = (char*)userPtr - sizeof(BlockHeader);
-    BlockHeader* header = (BlockHeader*)realPtr;
-    size_t index = header->index;
+/* 构造：初始化链表数组 */
+ThreadCache::ThreadCache() {
+    freeList_.fill(nullptr);
+    freeListSize_.fill(0);
+}
 
-    // 排除大内存
-    if (index == kLargeAllocIndex) {
-        free(realPtr);
+/* 批量数策略：越小的块一次拿越多 */
+std::size_t ThreadCache::batchNumForSize(std::size_t bytes) noexcept {
+    if (bytes <= 128) return 512;  // 128 B
+    if (bytes <= 1024) return 128; // 1 KB
+    if (bytes <= 8192) return 32;  // 8 KB
+    if (bytes <= 65536) return 8;  // 64 KB
+    return 4;                      // 128 KB < bitys <= kMaxBytes
+}
+
+void* ThreadCache::allocate(std::size_t size) {
+    if (size == 0) size = kAlignment;
+
+    /* 大对象：直接调用 malloc，但仍加头部保持统一回收逻辑 */
+    if (size > kMaxBytes) {
+        std::size_t total = size + sizeof(BlockHeader);
+        auto* raw = static_cast<char*>(std::malloc(total));
+        if (!raw) throw std::bad_alloc();
+
+        auto* hd = reinterpret_cast<BlockHeader*>(raw);
+        hd->size = size;
+        hd->next = nullptr;
+        return hd + 1; // 跳过头部返回给用户，加 1 相当于 + 1* sizeof (BlockHeader)
+    }
+
+    /* 小对象：先尝试本线程空闲链 */
+    std::size_t index = SizeClass::getIndex(size);  // 获取空闲块链表的 index
+
+    /* 对应的空闲链表不为空的情况 */
+    if (BlockHeader* hd = freeList_[index]) {
+        freeList_[index] = hd->next;
+        freeListSize_[index]--;
+        return hd + 1;
+    }
+
+    /* 空链为空则向 CentralCache 批量要 */
+    return fetchFromCentralCache(index);
+}
+
+void ThreadCache::deallocate(void* ptr) {
+    if (!ptr) return;
+
+    auto* hd = reinterpret_cast<BlockHeader*>(ptr) - 1;
+    std::size_t bytes = hd->size;
+
+    /* 大对象：直接交由系统释放 */
+    if (bytes > kMaxBytes) {
+        std::free(hd);
         return;
     }
 
-    // 插入到线程本地自由链表
-    *reinterpret_cast<void**>(userPtr) =
-        threadFreeList_[index]; // ptr 被临时解释为 void** 类型, 下一句还是恢复为 void*
-    threadFreeList_[index] = userPtr;
+    std::size_t index = SizeClass::getIndex(bytes);
 
-    // 更新对应自由链表的长度计数
-    threadFreeListSize_[index]++;
+    hd->next = freeList_[index];
+    freeList_[index] = hd;
+    freeListSize_[index]++;
 
-    // 判断是否需要将部分内存回收给中心缓存
-    if (shouldReturnToCentralCache(index)) {
-        returnToCentralCache(threadFreeList_[index]);
-    }
+    /* 链表过长 → 归还部分给 CentralCache */
+    if (shouldReturnToCentralCache(index)) returnToCentralCache(hd, index);
 }
 
-void ThreadCache::fetchFromCentralCache(size_t index) {
-    size_t size = (index + 1) * kAlignment;
-    // 根据对象内存大小计算批量获取的数量
-    size_t batchNum = getBatchNum(size);
-    // 从中心缓存批量获取内存
-    void* start = CentralCache::getInstance().fetchToThreadCache(index, batchNum);
-    if (!start) return;
+void* ThreadCache::fetchFromCentralCache(std::size_t index) {
+    std::size_t userBytes = (index + 1) * kAlignment;
+    std::size_t batchNum = batchNumForSize(userBytes);
 
-    // 找到新链表尾，接上旧 head
-    void* tail = start;
-    for (size_t i = 1; i < batchNum; ++i)
-        tail = *reinterpret_cast<void**>(tail);
-    *reinterpret_cast<void**>(tail) = threadFreeList_[index];
+    /* Central 尽力而为地提供 */
+    BlockHeader* list = CentralCache::getInstance().fetchBatch(index, batchNum);
+    if (!list) return nullptr; // PageCache 也没拿到，极端情况
 
-    threadFreeList_[index] = start;
-    threadFreeListSize_[index] += batchNum;
+    /* list 已经是 BlockHeader 链：第一个给用户，其余挂回本地链 */
+    BlockHeader* headUser = list;
+    BlockHeader* remain = headUser->next;
 
-    return;
+    /* 统计实际 remain 链的节点数（可能 < batchNum-1） */
+    std::size_t actual = 0;
+    for (BlockHeader* p = remain; p != nullptr; p = p->next)
+        ++actual;
+
+    freeList_[index] = remain;
+    freeListSize_[index] += actual;
+
+    headUser->next = nullptr;
+    return headUser + 1;
 }
 
-// 判断是否需要将内存回收给中心缓存
-bool ThreadCache::shouldReturnToCentralCache(size_t index) {
-    return threadFreeListSize_[index] >= kReturnToCentralThreshold;
-}
+/* 将本地空链拆成 keep / return 两段（keep ≈ 1/4） */
+void ThreadCache::returnToCentralCache(BlockHeader* start, std::size_t index) {
+    std::size_t total = freeListSize_[index];
+    if (total <= 1) return;
 
-void ThreadCache::returnToCentralCache(void* start) {
-    // // 获取对齐后的实际块大小
-    // size_t alignedSize = SizeClass::roundUp(size);
+    std::size_t keepCnt = std::max<std::size_t>(total / 4, 1);
+    std::size_t retCnt = total - keepCnt;
 
-    char* realPtr = static_cast<char*>(start) - sizeof(BlockHeader);
-    size_t index = reinterpret_cast<BlockHeader*>(realPtr)->index;
-    // 计算要归还内存块数量
-    size_t batchNum = threadFreeListSize_[index];
-    if (batchNum <= 1) return; // 如果只有一个块，则不归还
+    /* 找到需保留段的尾节点 */
+    BlockHeader* tail = start;
+    for (std::size_t i = 1; i < keepCnt; ++i)
+        tail = tail->next;
 
-    // 保留一部分在ThreadCache中（比如保留1/4）
-    size_t keepNum = std::max(batchNum / 4, size_t(1));
-    size_t returnNum = batchNum - keepNum;
-    if (returnNum == 0) return; // 已全保留，无需归还
+    /* 断链：tail->next 开始的列表归还 */
+    BlockHeader* retList = tail->next;
+    tail->next = nullptr;
 
-    // 将内存块串成链表
-    char* current = static_cast<char*>(start);
-    // 使用对齐后的大小计算分割点
-    char* splitNode = current;
-    for (size_t i = 0; i < keepNum - 1; ++i) {
-        splitNode = reinterpret_cast<char*>(*reinterpret_cast<void**>(splitNode));
-    }
+    freeList_[index] = start;
+    freeListSize_[index] = keepCnt;
 
-    // 将要返回的部分和要保留的部分断开
-    void* nextNode = *reinterpret_cast<void**>(splitNode);
-    *reinterpret_cast<void**>(splitNode) = nullptr; // 断开连接
-
-    // 更新自由链表大小
-    threadFreeListSize_[index] = keepNum;
-
-    const size_t userSize = (index + 1) * kAlignment;
-    // 将剩余部分返回给CentralCache
-    CentralCache::getInstance().returnFromThreadCache(nextNode, returnNum * userSize, index);
-}
-
-size_t ThreadCache::getBatchNum(size_t size) {
-    // 基准：每次批量获取不超过4KB内存
-    constexpr size_t kMaxBatchBytes = 4 * 1024; // 不让一次超过 4 KB
-    size_t maxNum = std::max<size_t>(1, kMaxBatchBytes / size);
-
-    // 根据对象大小设置合理的基准批量数
-    size_t baseNum; // 按块尺寸分档
-    if (size <= 32)
-        baseNum = 64;
-    else if (size <= 64)
-        baseNum = 32;
-    else if (size <= 128)
-        baseNum = 16;
-    else if (size <= 256)
-        baseNum = 8;
-    else if (size <= 512)
-        baseNum = 4;
-    else if (size <= 1024)
-        baseNum = 2;
-    else
-        baseNum = 1;
-
-    return std::clamp(baseNum, size_t(1), maxNum);
+    CentralCache::getInstance().returnBatch(retList, retCnt, index);
 }
 
 } // namespace mempool
