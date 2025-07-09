@@ -10,19 +10,19 @@
 | **MemoryPool**   | 统一外部接口：`allocate(size)` / `deallocate(ptr)` |
 
 > **目标**：  
-> 在多相同大小尺寸内存分配区间，相比 `new/delete` 获得约 **1.5x - 6x** 的吞吐提升。  
-> 在多随机大小尺寸内存分配区间，与 `new/delete` 性能持平
+> 在多相同大小尺寸内存分配时，相比 `new/delete` 获得约 **1.5x - 6x** 的吞吐提升。  
+> 在多随机大小尺寸内存分配时，与 `new/delete` 性能持平
 
 ---
 
 ## 特性
 
 - **C++20 / STL** 实现，依赖极少。
-- **包含块头部管理**：紧贴user内存前的 **8个** 字节用于存放 BlockHeader 管理user内存大小和 空闲链表的后继
+- **包含块头部管理**：紧贴 **user内存** 前的 **8个** 字节用于存放 BlockHeader 管理user内存大小和 空闲链表的后继
 - **API 签名简单**：`deallocate()` 无需显式指定内存 size 大小
 - **线程本地（ThreadCache）**：小对象分配零锁，按 size-class 批量管理。
 - **自适应批量**：`batchNumForSize()` 依据块大小动态决定一次抓取数量。
-- **页级别合并 & 回收**：空闲页超过阈值（默认 64 MB）时自动整段归还系统。
+- **页级别合并 & 回收**：空闲页超过阈值（默认 **64 MB**）时自动整段归还系统。
 - **ASan / TSan** 全通过：集成单元测试脚本可一键跑 AddressSanitizer / ThreadSanitizer。
 - **CMake** 构建，跨 Windows / Linux / macOS。
 
@@ -77,50 +77,52 @@ make perf
 
 ---
 
-## 示例性能（Intel i7-10875H · 8 线程 ·  WSL2 Ubuntu 24.04.2 LTS · gcc 13.3 -O3）
+## 示例性能（Intel i7-10875H · 16 线程 ·  WSL2 Ubuntu 24.04.2 LTS · gcc 13.3 -O3）
 
 ```
+[100%] Built target perf_compare
 ===== MemoryPool vs new/delete =====
 
 4B Single 100000000:
-MemoryPool : 788.03 ms
-New/Delete : 1102.04 ms
-Speedup     : 1.40x
+MemoryPool : 792.95 ms
+New/Delete : 1092.58 ms
+Speedup     : 1.38x
 
-8-thread ×100000000 each:
-MemoryPool : 1291.94 ms
-New/Delete : 1722.01 ms
-Speedup     : 1.33x
+16-thread ×100000000 each:
+MemoryPool : 1654.65 ms
+New/Delete : 2821.55 ms
+Speedup     : 1.71x
 
 64B Single 100000000:
-MemoryPool : 757.93 ms
-New/Delete : 1093.44 ms
-Speedup     : 1.44x
+MemoryPool : 751.89 ms
+New/Delete : 1106.30 ms
+Speedup     : 1.47x
 
-8-thread ×100000000 each:
-MemoryPool : 975.95 ms
-New/Delete : 1784.45 ms
-Speedup     : 1.83x
+16-thread ×100000000 each:
+MemoryPool : 1518.91 ms
+New/Delete : 2867.91 ms
+Speedup     : 1.89x
 
 4096B Single 100000000:
-MemoryPool : 767.54 ms
-New/Delete : 4023.05 ms
-Speedup     : 5.24x
+MemoryPool : 769.09 ms
+New/Delete : 5140.16 ms
+Speedup     : 6.68x
 
-8-thread ×100000000 each:
-MemoryPool : 994.98 ms
-New/Delete : 5272.77 ms
-Speedup     : 5.30x
+16-thread ×100000000 each:
+MemoryPool : 1579.70 ms
+New/Delete : 7662.36 ms
+Speedup     : 4.85x
 
 Mixed size ST 8-256B × 100000000:
-MemoryPool : 1547.40 ms
-New/Delete : 1519.93 ms
-Speedup     : 0.98x
+MemoryPool : 1616.21 ms
+New/Delete : 1497.40 ms
+Speedup     : 0.93x
 
-Mixed size MT 8-thread ×10000000 each:
-MemoryPool : 241.54 ms
-New/Delete : 269.13 ms
-Speedup     : 1.11x
+Mixed size MT 16-thread ×10000000 each:
+MemoryPool : 303.29 ms
+New/Delete : 403.85 ms
+Speedup     : 1.33x
+[100%] Built target perf
 ```
 
 ---

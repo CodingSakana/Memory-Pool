@@ -1,45 +1,43 @@
-[ 20%] Building CXX object CMakeFiles/perf_compare.dir/tests/perf_compare.cpp.o
-[ 40%] Linking CXX executable perf_compare
 [100%] Built target perf_compare
 ===== MemoryPool vs new/delete =====
 
 4B Single 100000000:
-MemoryPool : 788.03 ms
-New/Delete : 1102.04 ms
-Speedup     : 1.40x
+MemoryPool : 792.95 ms
+New/Delete : 1092.58 ms
+Speedup     : 1.38x
 
-8-thread ×100000000 each:
-MemoryPool : 1291.94 ms
-New/Delete : 1722.01 ms
-Speedup     : 1.33x
+16-thread ×100000000 each:
+MemoryPool : 1654.65 ms
+New/Delete : 2821.55 ms
+Speedup     : 1.71x
 
 64B Single 100000000:
-MemoryPool : 757.93 ms
-New/Delete : 1093.44 ms
-Speedup     : 1.44x
+MemoryPool : 751.89 ms
+New/Delete : 1106.30 ms
+Speedup     : 1.47x
 
-8-thread ×100000000 each:
-MemoryPool : 975.95 ms
-New/Delete : 1784.45 ms
-Speedup     : 1.83x
+16-thread ×100000000 each:
+MemoryPool : 1518.91 ms
+New/Delete : 2867.91 ms
+Speedup     : 1.89x
 
 4096B Single 100000000:
-MemoryPool : 767.54 ms
-New/Delete : 4023.05 ms
-Speedup     : 5.24x
+MemoryPool : 769.09 ms
+New/Delete : 5140.16 ms
+Speedup     : 6.68x
 
-8-thread ×100000000 each:
-MemoryPool : 994.98 ms
-New/Delete : 5272.77 ms
-Speedup     : 5.30x
+16-thread ×100000000 each:
+MemoryPool : 1579.70 ms
+New/Delete : 7662.36 ms
+Speedup     : 4.85x
 
 Mixed size ST 8-256B × 100000000:
-MemoryPool : 1547.40 ms
-New/Delete : 1519.93 ms
-Speedup     : 0.98x
+MemoryPool : 1616.21 ms
+New/Delete : 1497.40 ms
+Speedup     : 0.93x
 
-Mixed size MT 8-thread ×10000000 each:
-MemoryPool : 241.54 ms
-New/Delete : 269.13 ms
-Speedup     : 1.11x
+Mixed size MT 16-thread ×10000000 each:
+MemoryPool : 303.29 ms
+New/Delete : 403.85 ms
+Speedup     : 1.33x
 [100%] Built target perf
