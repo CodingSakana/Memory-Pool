@@ -1,43 +1,58 @@
 #pragma once
-#include "Common.h"
+/**
+ * class ThreadCache — 线程独享的内存分配器
+ *  func:
+ *      allocate(size)   — 先查本地空闲链；不够则从 CentralCache 拉批量
+ *      deallocate(ptr)  — 解析 BlockHeader 获取大小后挂回本地链
+ *                         当本地链过长时，回收一部分给 CentralCache
+ */
+#include <array>
+#include <cstddef>
 
-// ThreadCache 是每个线程独立的内存池，按大小组织空闲块链表，从 CentralCache 批量获取小块内存。
+#include "CentralCache.h" // CentralCache::fetchRange / returnRange
+#include "Common.h"       // BlockHeader / SizeClass / kFreeListNum …
 
 namespace mempool
 {
 
-// 线程本地缓存
 class ThreadCache {
 public:
-    // 每个线程独立一份, 且只在首次访问时调用一次构造函数
-    static ThreadCache* getInstance() {
-        static thread_local ThreadCache instance;
-        return &instance;
-    }
+    /** 当前线程唯一实例 */
+    static ThreadCache& getInstance();
 
-    void* allocate(size_t size);
-    void deallocate(void* ptr, size_t size);
+    /** 分配 size 字节：返回用户区域首地址 */
+    void* allocate(std::size_t size);
 
-private:
-    ThreadCache() {
-        freeList_.fill(nullptr);
-        freeListSize_.fill(0);
-    }
-
-    // 从中心缓存获取内存
-    void* fetchFromCentralCache(size_t index);
-    // 归还内存到中心缓存
-    void returnToCentralCache(void* start, size_t size);
-    // 是否需要归还到中心缓存
-    bool shouldReturnToCentralCache(size_t index);
-    
-    size_t getBatchNum(size_t size);
+    /** 归还内存：无需再传 size */
+    void deallocate(void* ptr);
 
 private:
-    // 每个线程的自由链表数组
-    std::array<void*, FREE_LIST_SIZE> freeList_;
-    // 不同内存大小自由链表的大小统计
-    std::array<size_t, FREE_LIST_SIZE> freeListSize_;
+    ThreadCache();
+    ~ThreadCache() = default;
+
+    ThreadCache(const ThreadCache&) = delete;
+    ThreadCache& operator=(const ThreadCache&) = delete;
+
+    /** 当本地空链为空时，从 CentralCache 批量抓取 */
+    void* fetchFromCentralCache(std::size_t index);
+
+    /** 当本地空链过长时，将一部分区块归还给 CentralCache */
+    void returnToCentralCache(BlockHeader* start, std::size_t index);
+
+    /** 根据区块大小决定一次批量抓取多少块 */
+    static std::size_t batchNumForSize(std::size_t bytes) noexcept;
+
+    /** 判断该 index 的空链是否需要回收给 CentralCache */
+    inline bool shouldReturnToCentralCache(std::size_t index) const noexcept {
+        /** 阈值：保持链表大小不超过 batch * 16 */
+        return freeListSize_[index] > batchNumForSize((index + 1) * kAlignment) * 16;
+    }
+
+    /** 每个 size-class 的空闲链表头指针 */
+    std::array<BlockHeader*, kFreeListNum> freeList_{};
+
+    /** 对应空链当前区块数量 */
+    std::array<std::size_t, kFreeListNum> freeListSize_{};
 };
 
 } // namespace mempool

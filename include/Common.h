@@ -1,25 +1,44 @@
 #pragma once
-#include <array>
-#include <atomic>
-#include <cstddef>
+/**
+ * 全局常量定义
+ * 
+ * struct BlockHeader     — 小块头部，记录大小并串联空闲链表
+ * struct SizeClass       — 简单尺寸类工具（对齐/索引）
+ */
+#include <cstddef> // size_t
+#include <cstdint> // uintptr_t
 
 namespace mempool
 {
-constexpr size_t ALIGNMENT = 8;
-constexpr size_t MAX_BYTES = 256 * 1024;                 // 256KB
-constexpr size_t FREE_LIST_SIZE = MAX_BYTES / ALIGNMENT; // 需要维护的自由链表个数, 多少个大小等级
 
-// Size 计算工具类
-class SizeClass {
-public:
-    // 向上取整
-    static size_t roundUp(size_t bytes) { return (bytes + ALIGNMENT - 1) & ~(ALIGNMENT - 1); }
+// ────────────────────────────────────────────────────────────
+// 全局常量
+// ────────────────────────────────────────────────────────────
+constexpr std::size_t kAlignment = 8;                        // 最小对齐粒度
+constexpr std::size_t kPageSize = 4096;                      // 系统页大小
+constexpr std::size_t kMaxBytes = 256 * 1024;                // 内存池可分配的最大字节数（256 KB）
+constexpr std::size_t kFreeListNum = kMaxBytes / kAlignment; // 小对象自由链表数量
 
-    static size_t getIndex(size_t bytes) {
-        // 确保bytes至少为ALIGNMENT
-        bytes = std::max(bytes, ALIGNMENT);
-        // 向上取整后-1
-        return (bytes + ALIGNMENT - 1) / ALIGNMENT - 1;
+// ────────────────────────────────────────────────────────────
+// 块头部：分配时紧贴 user 内存之前
+// ────────────────────────────────────────────────────────────
+struct BlockHeader {
+    std::size_t size;  // 不含头部的 user 内存大小
+    BlockHeader* next; // 空闲链中的后继
+};
+
+// ────────────────────────────────────────────────────────────
+// SizeClass：字节数 <-> 索引 的映射
+// ────────────────────────────────────────────────────────────
+struct SizeClass {
+    /** 按 kAlignment 向上取整 */
+    static inline std::size_t roundUp(std::size_t bytes) noexcept {
+        return (bytes + kAlignment - 1) & ~(kAlignment - 1);
+    }
+
+    /** 将内存大小映射到自由链表下标 */
+    static inline std::size_t getIndex(std::size_t bytes) noexcept {
+        return (roundUp(bytes) / kAlignment) - 1;
     }
 };
 
