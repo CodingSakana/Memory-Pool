@@ -36,7 +36,7 @@ void* CentralCache::fetchToThreadCache(size_t index, size_t batchNum) {
     // // 索引检查，当索引大于等于kFreeListSize时，说明申请内存过大应直接向系统申请
     // if (index >= kFreeListSize) return nullptr;
     const size_t userSize = (index + 1) * kAlignment;
-    const size_t blockTotalSize = (index + 1) * kAlignment + sizeof(BlockHeader);
+    const size_t blockTotalSize = userSize + sizeof(BlockHeader);
     // 自旋锁保护
     locks_[index].lock();
 
@@ -82,7 +82,7 @@ void* CentralCache::fetchToThreadCache(size_t index, size_t batchNum) {
                 }
                 // 多余块挂回 central（锁内）
                 locks_[index].lock(); // *** NEW: 重新上锁
-                *reinterpret_cast<void**>(start + (blockNum - 1) * blockTotalSize) =
+                *reinterpret_cast<void**>(start + (blockNum - 1) * blockTotalSize) =    // 计算最后一个节点的地址
                     centralFreeList_[index].load(std::memory_order_relaxed);
                 centralFreeList_[index].store(firstUser,
                                               std::memory_order_release); // 存 user 指针
@@ -107,6 +107,7 @@ void* CentralCache::fetchToThreadCache(size_t index, size_t batchNum) {
                 locks_[index].unlock(); // *** NEW: 释放锁
 
                 return firstUser;
+                
                 // 使用无锁方式记录span信息
                 // 做记录是为了将中心缓存多余内存块归还给页缓存做准备。考虑点：
                 // 1.CentralCache 管理的是小块内存，这些内存可能不连续

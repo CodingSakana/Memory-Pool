@@ -1,1 +1,0 @@
-/usr/bin/c++ -g -fsanitize=address,undefined CMakeFiles/demotest.dir/tests/demotest.cpp.o -o bin/demotest  lib/libmempool.a -lpthread 

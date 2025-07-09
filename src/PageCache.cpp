@@ -31,8 +31,22 @@ void* PageCache::allocateSpanToCentral(size_t memSize) {
                 /* --- 2.1.1 需要切分 --- */
                 if (remain >= kMinSpanPages) {
                     /* 创建剩余部分 splitSpan */
-                    void* splitAddr = static_cast<char*>(span->pageAddr) + needPages * kPageSize;
+                    void* splitAddr =
+                        static_cast<char*>(span->pageAddr) + needPages * kPageSize; // split是剩下的
                     Span* splitSpan = new Span(splitAddr, remain, nullptr, span, false);
+
+                    // 先找到这条 span 的根 span
+                    Span* head = span;
+                    while (head->headSpan)
+                        head = head->headSpan;
+
+                    // 用 head->pageAddr 去查 CompleteSpan*
+                    void* rootAddr = head->pageAddr;
+                    CompleteSpan* cs =
+                        addrToCompSpanMap_[rootAddr]; // 之前用 new CompleteSpan 时就是这个 key
+
+                    // 记录拆分信息
+                    cs->compSpanMap_[splitAddr] = splitSpan;
 
                     /* 挂回 freeSpans_[remain] 桶的头部 */
                     splitSpan->next = freeSpans_[remain];
@@ -60,6 +74,9 @@ void* PageCache::allocateSpanToCentral(size_t memSize) {
 
         /* 3.2 建 CompleteSpan（供后续整页回收） */
         addrToCompSpanMap_[memory] = new CompleteSpan(memory, newSpan);
+
+        CompleteSpan* cs = addrToCompSpanMap_[memory];
+        cs->compSpanMap_[memory] = newSpan;
 
         /* 3.3 头插进 freeSpans_[requestPages] 桶 */
         newSpan->next = freeSpans_[requestPages];

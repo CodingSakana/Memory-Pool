@@ -6,19 +6,31 @@
 
 namespace mempool
 {
-constexpr size_t kAlignment = 8;
-constexpr size_t kMaxBytes = 256 * 1024;                 // 256KB
-constexpr size_t kFreeListSize = kMaxBytes / kAlignment; // 需要维护的自由链表个数, 多少个大小等级
-constexpr size_t kPageSize = 4096;                       // 页大小
-constexpr size_t kReturnToCentralThreshold = 256;        // 归还至 Central 的阈值
-constexpr uint32_t kLargeAllocIndex = 0xFFFFFFFF;        // 标记大块分配
-constexpr size_t kMaxPages = kMaxBytes / kMaxBytes;      // Span 可以包含的最大页数
-constexpr size_t kMaxMemPoolSize = kMaxBytes * 1024;     // 内存池最大支持容量 256MB
-constexpr size_t kMinSpanPages = 8;                      // Span 的最小页数
-
-struct BlockHeader {
-    uint32_t index; // size class 编号(0 ~ 32767)   // 可以最大表示到 (32K - 1)B
+/*--------------------------------------------------
+ | 1. 对齐修正
+ |   - UBSan 报 store to misaligned address，是因为
+ |     BlockHeader 仅 4 B，user 区相对页首偏移=4，
+ |     但我们又在 user 区里写入 void*（要求 8 B 对齐）。
+ |   - 解决：让 BlockHeader 本身占 8 B，并显式 alignas(8)。
+ *-------------------------------------------------*/
+struct alignas(8) BlockHeader {
+    uint32_t index;   // size-class 索引（0 ~ 32767 | 0xFFFFFFFF=大块）
+    uint32_t reserved /*=0*/; // 仅作填充，保证 sizeof == 8
 };
+static_assert(sizeof(BlockHeader) == 8,
+              "BlockHeader must be 8-byte aligned, otherwise pointer write will break.");
+
+/*—— 其余常量不动 ——*/
+constexpr size_t kAlignment = 8;
+constexpr size_t kMaxBytes  = 256 * 1024;               // 256 KB
+constexpr size_t kFreeListSize = kMaxBytes / kAlignment;
+constexpr size_t kPageSize  = 4096;
+constexpr size_t kReturnToCentralThreshold = 256;
+constexpr uint32_t kLargeAllocIndex = 0xFFFFFFFF;
+/* 小修：最大页数应 = kMaxBytes / kPageSize */
+constexpr size_t kMaxPages = kMaxBytes / kPageSize;     // 64
+constexpr size_t kMaxMemPoolSize = kMaxBytes * 1024;    // 256 MB
+constexpr size_t kMinSpanPages = 8;
 
 // Size 计算工具类
 class SizeClass {

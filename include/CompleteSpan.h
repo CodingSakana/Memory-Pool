@@ -4,7 +4,7 @@
 #include <Span.h>
 
 struct CompleteSpan {
-    std::map<void*, Span*> spanMap_;
+    std::map<void*, Span*> compSpanMap_;
 
-    CompleteSpan(void* addr_, Span* span_) { spanMap_[addr_] = span_; }
+    CompleteSpan(void* addr_, Span* span_) { compSpanMap_[addr_] = span_; }
 };

@@ -1,1 +1,0 @@
-/usr/bin/c++ -g -fsanitize=address,undefined CMakeFiles/PerformanceTest.dir/tests/PerformanceTest.cpp.o -o bin/PerformanceTest  lib/libmempool.a -lpthread 

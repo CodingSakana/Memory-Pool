@@ -49,9 +49,9 @@ private:
     // 按页数管理空闲span，不同页数对应不同Span链表
     std::map<size_t, Span*> freeSpans_;
 
-    std::unordered_map<void*, Span*> spanMap_;
+    std::unordered_map<void*, Span*> spanMap_;  // 地址映射至 Span*
 
-    std::unordered_map<void*, CompleteSpan*> addrToCompSpanMap_;
+    std::unordered_map<void*, CompleteSpan*> addrToCompSpanMap_;    // head 映射至 complSpan
 
     // std::mutex mutex_;
 };

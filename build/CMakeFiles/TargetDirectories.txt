@@ -1,4 +1,0 @@
-/home/sssakana/CodingFiles/Memory-Pool/build/CMakeFiles/mempool.dir
-/home/sssakana/CodingFiles/Memory-Pool/build/CMakeFiles/demotest.dir
-/home/sssakana/CodingFiles/Memory-Pool/build/CMakeFiles/edit_cache.dir
-/home/sssakana/CodingFiles/Memory-Pool/build/CMakeFiles/rebuild_cache.dir
