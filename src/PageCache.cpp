@@ -6,6 +6,9 @@
 
 namespace mempool
 {
+/* 静态成员唯一定义 */
+std::unordered_set<void*> PageCache::systemBases_;
+
 /* 构成单例 */
 PageCache& PageCache::getInstance() {
     static PageCache pc;
@@ -88,9 +91,7 @@ void PageCache::freeSpan(void* addr, std::size_t numPages) {
     releaseIfExcess();
 }
 
-// ────────────────────────────────────────────────────────────
-// ~PageCache
-// ────────────────────────────────────────────────────────────
+/* ~PageCache */
 PageCache::~PageCache() {
     for (auto& kv : freeSpans_) {
         Span* node = kv.second;
@@ -136,7 +137,7 @@ void PageCache::eraseSpan(Span* span) {
         if (head == span) {
             it->second = head->next;
             if (it->second == nullptr) freeSpans_.erase(it); // 链空，删整 key
-        } else {    // 相当于从链表中间删除节点
+        } else {                                             // 相当于从链表中间删除节点
             Span* prev = head;
             while (prev && prev->next != span)
                 prev = prev->next;
@@ -148,38 +149,50 @@ void PageCache::eraseSpan(Span* span) {
     delete span;
 }
 
-// ？？？
-// 这个怎么没有把span自己从addr的map里拿走？可能是本来就没在里面。
 /*──────────── 3) mergeWithNeighbors ────────────*/
 void PageCache::mergeWithNeighbors(Span*& span) {
-    /* 向前合并 */
+    // —— 向前合并 ——
     auto itPrev = addrSpanMap_.lower_bound(span->pageAddr);
     if (itPrev != addrSpanMap_.begin()) {
         --itPrev;
         Span* prev = itPrev->second;
         char* prevEnd = static_cast<char*>(prev->pageAddr) + prev->numPages * kPageSize;
         if (prevEnd == span->pageAddr) {
-            eraseSpan(prev); // 抽出 prev
-            span->pageAddr = prev->pageAddr;
-            span->numPages += prev->numPages;
+            // 缓存 prev 的信息
+            void* prevAddr = prev->pageAddr;
+            std::size_t prevPages = prev->numPages;
+
+            // 删除 prev 对象
+            eraseSpan(prev);
+
+            // 更新 span
+            span->pageAddr = prevAddr;
+            span->numPages += prevPages;
         }
     }
 
-    /* 向后合并（重新 upper_bound，因为地址可能变） */
+    // —— 向后合并 ——
     auto itNext = addrSpanMap_.upper_bound(span->pageAddr);
     if (itNext != addrSpanMap_.end()) {
         Span* next = itNext->second;
         char* spanEnd = static_cast<char*>(span->pageAddr) + span->numPages * kPageSize;
         if (spanEnd == next->pageAddr) {
+            // 缓存 next 页数
+            std::size_t nextPages = next->numPages;
+
+            // 删除 next 对象
             eraseSpan(next);
-            span->numPages += next->numPages;
+
+            // 只需调整页数
+            span->numPages += nextPages;
         }
     }
 
-    /* 将更新后的 span 重新放入 size-map（addr-map 在下面函数中已重新插入） */
+    // 把合并后的 span 重新插回两张表
     insertSpan(span);
 }
 
+/* 若空闲页总量过大，则把最大的 span 直接释放给系统 */
 void PageCache::releaseIfExcess() {
     while (totalFreePages_ > kReleaseThresholdPages && !freeSpans_.empty()) {
         auto itBiggest = std::prev(freeSpans_.end());
@@ -190,8 +203,8 @@ void PageCache::releaseIfExcess() {
             void* base = span->pageAddr;
             std::size_t pages = span->numPages;
 
-            eraseSpan(span);              // 从表里摘掉
-            systemBases_.erase(base);
+            eraseSpan(span); // 从两张 map（size-map 和 addr-map）删除并 delete span （只删 meta）
+            systemBases_.erase(base); // 物理回收整个 Span
 
 #if __cpp_aligned_new >= 201606
             ::operator delete(base, std::align_val_t{kPageSize});
@@ -201,34 +214,8 @@ void PageCache::releaseIfExcess() {
             totalFreePages_ -= pages;
         } else {
             // 不是基址：跳过，避免浪费
-            // 可选择 break; 或继续找下一个较大 span
+            // 可选择继续找下一个较大 span，但是好像没什么必要？
             break;
-        }
-    }
-}
-
-/* 若空闲页总量过大，则把最大的 span 直接释放给系统 */
-void PageCache::releaseIfExcess() {
-    while (totalFreePages_ > kReleaseThresholdPages && !freeSpans_.empty()) {
-        auto itBiggest = std::prev(freeSpans_.end());
-        Span* span = itBiggest->second;
-
-        // 只有当 span->pageAddr 正好是系统基址才真正释放
-        void* addr = span->pageAddr; // 先保存，等会儿用
-        std::size_t pages = span->numPages;
-
-        eraseSpan(span); // 从两张 map（size-map 和 addr-map）删并 delete span （只删 meta）
-
-        if (systemBases_.erase(addr)) { // 基址：物理回收
-#if __cpp_aligned_new >= 201606
-            ::operator delete(addr, std::align_val_t{kPageSize});
-#else
-            std::free(addr);
-#endif
-            totalFreePages_ -= pages;
-        } else {
-            /* 只是从空闲表剔除，不物理 free，但逻辑空闲页数仍减少 */
-            totalFreePages_ -= pages;
         }
     }
 }
