@@ -211,7 +211,7 @@ void PageCache::releaseIfExcess() {
             totalFreePages_ -= pages;
         } else {
             // 不是基址：跳过，避免浪费
-            // 可选择继续找下一个较大 span，但是好像没什么必要？
+            // 可选择继续找下一个较大 span
             break;
         }
     }
