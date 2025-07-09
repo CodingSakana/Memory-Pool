@@ -151,46 +151,43 @@ void PageCache::eraseSpan(Span* span) {
 
 /*──────────── 3) mergeWithNeighbors ────────────*/
 void PageCache::mergeWithNeighbors(Span*& span) {
-    // —— 向前合并 ——
+    /* ---------- 向前合并 ---------- */
     auto itPrev = addrSpanMap_.lower_bound(span->pageAddr);
     if (itPrev != addrSpanMap_.begin()) {
         --itPrev;
         Span* prev = itPrev->second;
         char* prevEnd = static_cast<char*>(prev->pageAddr) + prev->numPages * kPageSize;
         if (prevEnd == span->pageAddr) {
-            // 缓存 prev 的信息
-            void* prevAddr = prev->pageAddr;
+            void*       prevAddr  = prev->pageAddr;
             std::size_t prevPages = prev->numPages;
 
-            // 删除 prev 对象
-            eraseSpan(prev);
+            totalFreePages_ -= prevPages;   // ★ 从全局计数先扣掉
+            eraseSpan(prev);                //   再删除 prev
 
-            // 更新 span
-            span->pageAddr = prevAddr;
+            span->pageAddr  = prevAddr;
             span->numPages += prevPages;
         }
     }
 
-    // —— 向后合并 ——
+    /* ---------- 向后合并 ---------- */
     auto itNext = addrSpanMap_.upper_bound(span->pageAddr);
     if (itNext != addrSpanMap_.end()) {
         Span* next = itNext->second;
         char* spanEnd = static_cast<char*>(span->pageAddr) + span->numPages * kPageSize;
         if (spanEnd == next->pageAddr) {
-            // 缓存 next 页数
             std::size_t nextPages = next->numPages;
 
-            // 删除 next 对象
+            totalFreePages_ -= nextPages;   // ★ 同理，先扣
             eraseSpan(next);
 
-            // 只需调整页数
             span->numPages += nextPages;
         }
     }
 
-    // 把合并后的 span 重新插回两张表
+    /* 把合并后的 span 重新挂回空闲表 */
     insertSpan(span);
 }
+
 
 /* 若空闲页总量过大，则把最大的 span 直接释放给系统 */
 void PageCache::releaseIfExcess() {
