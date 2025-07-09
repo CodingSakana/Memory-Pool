@@ -79,12 +79,11 @@ void CentralCache::returnBatch(BlockHeader* start, std::size_t /*blockNum*/,
     lk.unlock();
 }
 
-// 按 size‐class 分段：小对象拿少点页，大对象拿多点页
 static constexpr std::size_t kSpanPagesForIndex(size_t index) {
-    if (index <= 4) return 4;    // 最小 sizeClass，用 4 页
-    if (index <= 16) return 8;   // 中小型，用 8 页
-    if (index <= 64) return 16;  // 中型，用 16 页
-    return 32;                    // 较大，用 32 页
+    size_t blockSize = (index + 1) * kAlignment;
+    size_t numPages = blockSize / kPageSize;
+    if (numPages <= 8) return 8;
+    return numPages;
 }
 
 /* 向 PageCache 申请，切分成 BlockHeader 链并挂入 centralFreeList_[index] */

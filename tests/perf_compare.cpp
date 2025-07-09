@@ -1,8 +1,10 @@
 /******************************************************************
- * perf_compare_sizes_formatted.cpp
+ * perf_compare_sizes_mt_mixed.cpp
  *
+ * 关闭 glibc tcache 路径
+ * 提前预热（warmup）
  * 对比 new/delete 与 MemoryPool 在 4B、16B、64B、128B 及 混合尺寸下的性能
- * 并加入：关闭 glibc tcache 路径 + 预热（warmup）
+ * 增加混合尺寸的多线程(MT)测试，并可单独配置循环次数
  ******************************************************************/
 #include <chrono>
 #include <cstdio>
@@ -71,6 +73,31 @@ double bench_ST_mixed(std::size_t N, Alloc A, Free F) {
     return ms(clk::now() - t0).count();
 }
 
+// 多线程混合尺寸
+template<typename Alloc, typename Free>
+double bench_MT_mixed(int thr, std::size_t perThr, Alloc A, Free F) {
+    std::atomic<int> ready{0};
+    std::mt19937 rng(1);
+    std::uniform_int_distribution<int> dist(8,256);
+    auto t0 = clk::now();
+    std::vector<std::thread> threads;
+    threads.reserve(thr);
+    for (int i = 0; i < thr; ++i) {
+        threads.emplace_back([&,i]{
+            std::mt19937 local_rng(rng());
+            std::uniform_int_distribution<int> local_dist(8,256);
+            ready.fetch_add(1);
+            while (ready.load() < thr) std::this_thread::yield();
+            for (std::size_t j = 0; j < perThr; ++j) {
+                void* p = A(local_dist(local_rng));
+                F(p);
+            }
+        });
+    }
+    for (auto& t : threads) t.join();
+    return ms(clk::now() - t0).count();
+}
+
 int main() {
     // ──────────────────────────────────────────────
     // 1) 关闭 glibc tcache 路径（Linux/glibc 专属）
@@ -89,11 +116,16 @@ int main() {
         void* q = nalloc(128); nfree(q);
     }
 
-    constexpr std::size_t N_ST  = 1'000'000;
-    constexpr int         THR   = 8;
-    constexpr std::size_t N_MT  = 250'000;
+    // 单线程和多线程固定大小循环次数
+    constexpr std::size_t N_ST   = 100'000'000;
+    constexpr int         THR    = 8;
+    constexpr std::size_t N_MT   = 100'000'000;
 
-    std::vector<std::size_t> sizes = {4, 16, 64, 128};
+    // 混合尺寸循环次数，可单独配置
+    constexpr std::size_t MIX_ST_N = 100'000'000;  // 单线程混合尺寸循环次数
+    constexpr std::size_t MIX_MT_N = 10'000'000;  // 每线程多线程混合尺寸循环次数
+
+    std::vector<std::size_t> sizes = {4, 64, 4 * 1024};
 
     printf("===== MemoryPool vs new/delete =====\n\n");
 
@@ -113,21 +145,23 @@ int main() {
         printf("MemoryPool : %.2f ms\n", mp_mt);
         printf("New/Delete : %.2f ms\n", nd_mt);
         printf("Speedup     : %.2fx\n\n", nd_mt / mp_mt);
-
-        // —— MemoryPool ST vs MT 比较 —— 
-        printf("MemoryPool MT vs ST (%zuB):\n", sz);
-        printf("Single     : %.2f ms\n", mp_st);
-        printf("Multi(%dT) : %.2f ms\n", THR, mp_mt);
-        printf("ST / MT    : %.2fx\n\n", mp_st > 0 ? mp_st/mp_mt : 0.0);
     }
 
-    // —— 混合尺寸 —— 
-    double mp_mix = bench_ST_mixed(N_ST, palloc, pfree);
-    double nd_mix = bench_ST_mixed(N_ST, nalloc, nfree);
-    printf("Mixed size 8-256B × %zu:\n", N_ST);
-    printf("MemoryPool : %.2f ms\n", mp_mix);
-    printf("New/Delete : %.2f ms\n", nd_mix);
-    printf("Speedup     : %.2fx\n", nd_mix / mp_mix);
+    // —— 混合尺寸 单线程 —— 
+    double mp_mix_st = bench_ST_mixed(MIX_ST_N, palloc, pfree);
+    double nd_mix_st = bench_ST_mixed(MIX_ST_N, nalloc, nfree);
+    printf("Mixed size ST 8-256B × %zu:\n", MIX_ST_N);
+    printf("MemoryPool : %.2f ms\n", mp_mix_st);
+    printf("New/Delete : %.2f ms\n", nd_mix_st);
+    printf("Speedup     : %.2fx\n\n", nd_mix_st / mp_mix_st);
+
+    // —— 混合尺寸 多线程 —— 
+    double mp_mix_mt = bench_MT_mixed(THR, MIX_MT_N, palloc, pfree);
+    double nd_mix_mt = bench_MT_mixed(THR, MIX_MT_N, nalloc, nfree);
+    printf("Mixed size MT %d-thread ×%zu each:\n", THR, MIX_MT_N);
+    printf("MemoryPool : %.2f ms\n", mp_mix_mt);
+    printf("New/Delete : %.2f ms\n", nd_mix_mt);
+    printf("Speedup     : %.2fx\n", nd_mix_mt / mp_mix_mt);
 
     return 0;
 }

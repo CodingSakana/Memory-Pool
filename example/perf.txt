@@ -1,0 +1,45 @@
+[ 20%] Building CXX object CMakeFiles/perf_compare.dir/tests/perf_compare.cpp.o
+[ 40%] Linking CXX executable perf_compare
+[100%] Built target perf_compare
+===== MemoryPool vs new/delete =====
+
+4B Single 100000000:
+MemoryPool : 788.03 ms
+New/Delete : 1102.04 ms
+Speedup     : 1.40x
+
+8-thread ×100000000 each:
+MemoryPool : 1291.94 ms
+New/Delete : 1722.01 ms
+Speedup     : 1.33x
+
+64B Single 100000000:
+MemoryPool : 757.93 ms
+New/Delete : 1093.44 ms
+Speedup     : 1.44x
+
+8-thread ×100000000 each:
+MemoryPool : 975.95 ms
+New/Delete : 1784.45 ms
+Speedup     : 1.83x
+
+4096B Single 100000000:
+MemoryPool : 767.54 ms
+New/Delete : 4023.05 ms
+Speedup     : 5.24x
+
+8-thread ×100000000 each:
+MemoryPool : 994.98 ms
+New/Delete : 5272.77 ms
+Speedup     : 5.30x
+
+Mixed size ST 8-256B × 100000000:
+MemoryPool : 1547.40 ms
+New/Delete : 1519.93 ms
+Speedup     : 0.98x
+
+Mixed size MT 8-thread ×10000000 each:
+MemoryPool : 241.54 ms
+New/Delete : 269.13 ms
+Speedup     : 1.11x
+[100%] Built target perf

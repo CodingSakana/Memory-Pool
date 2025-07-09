@@ -1,0 +1,8 @@
+[100%] Built target mempool_full_test
+[PASS] Span merge / split
+[PASS] Threshold release
+[PASS] ThreadCache concurrency
+[PASS] Thread exit cleanup
+[PASS] 1M mixed alloc/free longrun
+All extended tests passed!
+[100%] Built target test
