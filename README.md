@@ -1,5 +1,10 @@
 # 高性能 Linux Memory-Pool（C++20 内存池）
 
+
+<p>
+  <a href="#high-performance-linux-memory-pool-c20">English version available below – click here to jump</a>
+</p>
+
 一款面向 **内存需求较为固定的高频分配** 场景的内存池，核心组件包括：
 
 | 组件               | 作用                                          |
@@ -145,6 +150,157 @@ mempool::MemoryPool::deallocate(p);            // 无需显式传 size
 ## 贡献
 
 欢迎 PR / Issue！
+
+---
+
+**Enjoy fast allocation! 🚀**
+
+
+# High-Performance Linux Memory Pool (C++20)
+
+A memory pool designed for **frequent allocations of similarly sized blocks**, featuring the following core components:
+
+| Component        | Role                                                                  |
+|------------------|-----------------------------------------------------------------------|
+| **ThreadCache**  | Per-thread local cache; supports batch acquire and batch release.     |
+| **CentralCache** | Shared center cache for inter-thread block balancing.                 |
+| **PageCache**    | Manages system memory in page units, handles span merging and release.|
+| **MemoryPool**   | Unified interface: `allocate(size)` / `deallocate(ptr)`               |
+
+> **Goal**:  
+> Achieve ~**1.3x - 8x** throughput gain over `new/delete` for uniform-sized allocations.  
+> Maintain performance parity in mixed-size allocation scenarios.
+
+---
+
+## Features
+
+- **Modern C++20 / STL** implementation with minimal dependencies.
+- **Block header metadata**: Each user block is preceded by a 16-byte header to store block size and next pointer.
+- **Simple API**: `deallocate()` requires no explicit size input.
+- **Thread-local (ThreadCache)**: Lock-free for small allocations, batch-managed by size class.
+- **Adaptive batch fetch**: `batchNumForSize()` dynamically adjusts batch size by object size.
+- **Page-level merging & reclaiming**: Automatically releases spans back to system if total free pages exceed a 64MB threshold.
+- **ASan / TSan compatible**: Fully tested with AddressSanitizer and ThreadSanitizer.
+
+---
+
+## Directory Structure
+
+```
+Memory-Pool/
+│
+├─ include/         Public headers and API definitions
+├─ src/             Core component implementations
+├─ tests/           Unit tests and benchmarks
+│   ├─ mempool_full_test.cpp    Functional and stability tests
+│   ├─ perf_compare.cpp         Performance benchmark tests
+├─ example/         Sample output from tests
+├─ CMakeLists.txt   CMake build script
+└─ README.md        This file
+```
+
+---
+
+## Build & Run
+
+### 1. Generate Build Files
+
+> Run in project root:
+```bash
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+```
+
+> For debug mode, use `-DCMAKE_BUILD_TYPE=Debug` (enables `-g` and disables optimizations).
+
+### 2. Build
+```bash
+make
+```
+
+### 3. Run Unit Tests
+```bash
+make test
+```
+
+### 4. Run Performance Benchmarks
+```bash
+make perf
+```
+
+---
+
+## Benchmark Results  
+**Intel i7-10875H · 16 threads · WSL2 Ubuntu 24.04.2 LTS · gcc 13.3 -O3**
+
+```
+[100%] Built target perf_compare
+===== MemoryPool vs new/delete =====
+
+4B Single 100000000:
+MemoryPool : 792.95 ms
+New/Delete : 1092.58 ms
+Speedup     : 1.38x
+
+16-thread ×10000000 each:
+MemoryPool : 1654.65 ms
+New/Delete : 2821.55 ms
+Speedup     : 1.71x
+
+64B Single 100000000:
+MemoryPool : 751.89 ms
+New/Delete : 1106.30 ms
+Speedup     : 1.47x
+
+16-thread ×10000000 each:
+MemoryPool : 1518.91 ms
+New/Delete : 2867.91 ms
+Speedup     : 1.89x
+
+4096B Single 100000000:
+MemoryPool : 769.09 ms
+New/Delete : 5140.16 ms
+Speedup     : 6.68x
+
+16-thread ×10000000 each:
+MemoryPool : 1579.70 ms
+New/Delete : 7662.36 ms
+Speedup     : 4.85x
+
+Mixed size ST 8-256B × 100000000:
+MemoryPool : 1616.21 ms
+New/Delete : 1497.40 ms
+Speedup     : 0.93x
+
+Mixed size MT 16-thread ×1000000 each:
+MemoryPool : 303.29 ms
+New/Delete : 403.85 ms
+Speedup     : 1.33x
+[100%] Built target perf
+```
+
+---
+
+## API Usage
+
+```cpp
+#include "MemoryPool.h"
+
+void* p = mempool::MemoryPool::allocate(64);   // Arbitrary size
+mempool::MemoryPool::deallocate(p);            // No need to pass size
+```
+
+- Alignment granularity: **8 B**
+- System page size: **4 KB**
+- Maximum allocatable block size: **256 KB**
+- Requests > 256 KB fall back to `std::malloc()`
+
+---
+
+## Contributing
+
+PRs and Issues are welcome!
 
 ---
 
