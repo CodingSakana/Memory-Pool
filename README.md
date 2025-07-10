@@ -14,9 +14,11 @@
 | **PageCache**    | 以页为粒度向系统申请与释放内存，负责相邻 Span 合并、阈值回收。          |
 | **MemoryPool**   | 统一外部接口：`allocate(size)` / `deallocate(ptr)` |
 
-> **目标**：  
-> 在多相同大小尺寸内存分配时，相比 `new/delete` 获得约 **1.3x - 7x** 的吞吐提升（随分配对象大小不同而不同）。  
-> 在多随机大小尺寸内存分配时，与 `new/delete` 性能持平
+---
+
+**目标**：  
+ - 在多相同大小尺寸内存分配时，相比 `new/delete` 获得约 **1.3x - 7x** 的吞吐提升（随分配对象大小不同而不同）。  
+ - 在多随机大小尺寸内存分配时，与 `new/delete` 性能持平
 
 ---
 
@@ -222,9 +224,11 @@ A memory pool designed for **frequent allocations of similarly sized blocks**, f
 | **PageCache**    | Manages system memory in page units, handles span merging and release.|
 | **MemoryPool**   | Unified interface: `allocate(size)` / `deallocate(ptr)`               |
 
-> **Goal**:  
-> Achieve ~**1.3x - 8x** throughput gain over `new/delete` for uniform-sized allocations.  
-> Maintain performance parity in mixed-size allocation scenarios.
+--- 
+
+**Goal**:  
+ - Achieve ~**1.3x - 8x** throughput gain over `new/delete` for uniform-sized allocations.  
+ - Maintain performance parity in mixed-size allocation scenarios.
 
 ---
 
