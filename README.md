@@ -20,6 +20,22 @@
 
 ---
 
+## API
+
+```cpp
+#include "MemoryPool.h"
+
+void* p = mempool::MemoryPool::allocate(64);   // 任意大小
+mempool::MemoryPool::deallocate(p);            // 无需显式传 size
+```
+
+ - 对齐粒度为 **8 B**
+ - 系统页大小为 **4 KB**
+ - 内存池可分配的最大字节数为 **256 KB**
+ - **256 KB** 以上的内存分配请求默认直接转发至 `std::malloc()`。
+
+---
+
 ## 特性
 
 - **C++20 / STL** 实现，依赖极少。
@@ -28,7 +44,7 @@
 - **线程本地（ThreadCache）**：小对象分配零锁，按 size-class 批量管理。
 - **自适应批量**：`batchNumForSize()` 依据块大小动态决定一次抓取数量。
 - **页级别合并 & 回收**：空闲页超过阈值（默认 **64 MB**）时自动整段归还系统。
-- **ASan / TSan** 全通过：集成单元测试脚本可一键跑 AddressSanitizer / ThreadSanitizer。
+- **ASan / TSan** 测试全通过。
 
 ---
 
@@ -186,22 +202,6 @@ Speedup     : 1.26x
 
 ---
 
-## API
-
-```cpp
-#include "MemoryPool.h"
-
-void* p = mempool::MemoryPool::allocate(64);   // 任意大小
-mempool::MemoryPool::deallocate(p);            // 无需显式传 size
-```
-
- - 对齐粒度为 **8 B**
- - 系统页大小为 **4 KB**
- - 内存池可分配的最大字节数为 **256 KB**
- - **256 KB** 以上的内存分配请求默认直接转发至 `std::malloc()`。
-
----
-
 ## 贡献
 
 欢迎 PR / Issue！
@@ -225,6 +225,22 @@ A memory pool designed for **frequent allocations of similarly sized blocks**, f
 > **Goal**:  
 > Achieve ~**1.3x - 8x** throughput gain over `new/delete` for uniform-sized allocations.  
 > Maintain performance parity in mixed-size allocation scenarios.
+
+---
+
+## API Usage
+
+```cpp
+#include "MemoryPool.h"
+
+void* p = mempool::MemoryPool::allocate(64);   // Arbitrary size
+mempool::MemoryPool::deallocate(p);            // No need to pass size
+```
+
+- Alignment granularity: **8 B**
+- System page size: **4 KB**
+- Maximum allocatable block size: **256 KB**
+- Requests > 256 KB fall back to `std::malloc()`
 
 ---
 
@@ -387,22 +403,6 @@ Speedup     : 1.26x
 [100%] Built target perf
 
 ```
-
----
-
-## API Usage
-
-```cpp
-#include "MemoryPool.h"
-
-void* p = mempool::MemoryPool::allocate(64);   // Arbitrary size
-mempool::MemoryPool::deallocate(p);            // No need to pass size
-```
-
-- Alignment granularity: **8 B**
-- System page size: **4 KB**
-- Maximum allocatable block size: **256 KB**
-- Requests > 256 KB fall back to `std::malloc()`
 
 ---
 
