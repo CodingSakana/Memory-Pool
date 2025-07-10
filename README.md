@@ -15,7 +15,7 @@
 | **MemoryPool**   | 统一外部接口：`allocate(size)` / `deallocate(ptr)` |
 
 > **目标**：  
-> 在多相同大小尺寸内存分配时，相比 `new/delete` 获得约 **1.3x - 8x** 的吞吐提升（随分配对象大小不同而不同）。  
+> 在多相同大小尺寸内存分配时，相比 `new/delete` 获得约 **1.3x - 7x** 的吞吐提升（随分配对象大小不同而不同）。  
 > 在多随机大小尺寸内存分配时，与 `new/delete` 性能持平
 
 ---
@@ -81,9 +81,11 @@ make perf
 
 ---
 
-## 示例性能（Intel i7-10875H · 16 线程 ·  WSL2 Ubuntu 24.04.2 LTS · gcc 13.3 -O3）
+## 示例性能 1  
+> **Intel i7-10875H · 16 线程 ·  WSL2 Ubuntu 24.04.2 LTS · gcc 13.3 -O3**
 
 ```
+
 [100%] Built target perf_compare
 ===== MemoryPool vs new/delete =====
 
@@ -127,6 +129,59 @@ MemoryPool : 303.29 ms
 New/Delete : 403.85 ms
 Speedup     : 1.33x
 [100%] Built target perf
+
+```
+
+---
+## 示例性能 2  
+> **AMD Athlon 3000G · 4 线程 ·  Ubuntu 24.04.2 LTS · gcc 13.3 -O3**
+
+```
+
+[100%] Built target perf_compare
+===== MemoryPool vs new/delete =====
+
+4B Single 100000000:
+MemoryPool : 1313.02 ms
+New/Delete : 1426.21 ms
+Speedup     : 1.09x
+
+4-thread ×100000000 each:
+MemoryPool : 1664.82 ms
+New/Delete : 2780.91 ms
+Speedup     : 1.67x
+
+64B Single 100000000:
+MemoryPool : 1298.49 ms
+New/Delete : 1380.63 ms
+Speedup     : 1.06x
+
+4-thread ×100000000 each:
+MemoryPool : 1655.64 ms
+New/Delete : 2751.18 ms
+Speedup     : 1.66x
+
+4096B Single 100000000:
+MemoryPool : 1287.09 ms
+New/Delete : 3956.55 ms
+Speedup     : 3.07x
+
+4-thread ×100000000 each:
+MemoryPool : 1660.49 ms
+New/Delete : 6039.85 ms
+Speedup     : 3.64x
+
+Mixed size ST 8-256B × 100000000:
+MemoryPool : 2089.91 ms
+New/Delete : 2128.22 ms
+Speedup     : 1.02x
+
+Mixed size MT 4-thread ×10000000 each:
+MemoryPool : 293.26 ms
+New/Delete : 370.06 ms
+Speedup     : 1.26x
+[100%] Built target perf
+
 ```
 
 ---
@@ -231,7 +286,7 @@ make perf
 
 ---
 
-## Benchmark Results  
+## Benchmark Results 1  
 **Intel i7-10875H · 16 threads · WSL2 Ubuntu 24.04.2 LTS · gcc 13.3 -O3**
 
 ```
@@ -278,6 +333,59 @@ MemoryPool : 303.29 ms
 New/Delete : 403.85 ms
 Speedup     : 1.33x
 [100%] Built target perf
+```
+
+---
+
+## Benchmark Results 2  
+> **AMD Athlon 3000G · 4 线程 ·  Ubuntu 24.04.2 LTS · gcc 13.3 -O3**
+
+```
+
+[100%] Built target perf_compare
+===== MemoryPool vs new/delete =====
+
+4B Single 100000000:
+MemoryPool : 1313.02 ms
+New/Delete : 1426.21 ms
+Speedup     : 1.09x
+
+4-thread ×100000000 each:
+MemoryPool : 1664.82 ms
+New/Delete : 2780.91 ms
+Speedup     : 1.67x
+
+64B Single 100000000:
+MemoryPool : 1298.49 ms
+New/Delete : 1380.63 ms
+Speedup     : 1.06x
+
+4-thread ×100000000 each:
+MemoryPool : 1655.64 ms
+New/Delete : 2751.18 ms
+Speedup     : 1.66x
+
+4096B Single 100000000:
+MemoryPool : 1287.09 ms
+New/Delete : 3956.55 ms
+Speedup     : 3.07x
+
+4-thread ×100000000 each:
+MemoryPool : 1660.49 ms
+New/Delete : 6039.85 ms
+Speedup     : 3.64x
+
+Mixed size ST 8-256B × 100000000:
+MemoryPool : 2089.91 ms
+New/Delete : 2128.22 ms
+Speedup     : 1.02x
+
+Mixed size MT 4-thread ×10000000 each:
+MemoryPool : 293.26 ms
+New/Delete : 370.06 ms
+Speedup     : 1.26x
+[100%] Built target perf
+
 ```
 
 ---
