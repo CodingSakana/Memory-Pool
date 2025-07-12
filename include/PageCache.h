@@ -65,7 +65,7 @@ private:
     /* 按页数升序的 size → Span*（链表）的 map */
     std::map<std::size_t, Span*> freeSpans_;
 
-    /* 按地址升序的空闲 addr → Span*（链表）的 map，用于相邻合并 */
+    /* 按地址升序的 **空闲** addr → Span* 的 map，用于相邻合并 */
     std::map<void*, Span*> addrSpanMap_;
 
     /* 全局互斥保护 */
